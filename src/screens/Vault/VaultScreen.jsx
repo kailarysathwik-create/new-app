@@ -1,14 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Dimensions } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Lock, Plus, ShieldAlert, Fingerprint, EyeOff } from 'lucide-react-native';
+import { Lock, Plus, Fingerprint, EyeOff } from 'lucide-react-native';
 import { colors, spacing, radius, typography, shadows } from '../../theme/tokens';
 
-const { width } = Dimensions.get('window');
-
 export default function VaultScreen() {
-  const [items, setItems] = useState([]);
+  const [items] = useState([]);
 
   return (
     <View style={styles.container}>
@@ -32,7 +30,7 @@ export default function VaultScreen() {
                 </View>
                 <Text style={styles.emptyTitle}>Your Vault is Empty</Text>
                 <Text style={styles.emptyText}>
-                    Photos and videos added here are encrypted and completely hidden from your phone's gallery.
+                    Photos and videos added here are encrypted and completely hidden from your phone&apos;s gallery.
                 </Text>
                 
                 <TouchableOpacity style={styles.addBtn}>
@@ -56,6 +54,7 @@ export default function VaultScreen() {
           <FlatList
              data={items}
              numColumns={3}
+             keyExtractor={(item, index) => index.toString()}
              renderItem={() => <View style={styles.itemPlaceholder} />}
           />
         )}

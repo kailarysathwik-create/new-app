@@ -1,35 +1,42 @@
 export const colors = {
-  // Deep Space Backgrounds
-  bg: '#050508',
-  bgCard: '#0D0D14',
-  bgSurface: '#161622',
+  // Deep Warm Backgrounds
+  bg: '#0F0904',
+  bgCard: '#1D120B',
+  bgSurface: '#2D1F12',
 
-  // Electric Accents (Vibrant)
-  accent: '#7000FF',         // Electric Purple
-  accentSecondary: '#00F5FF', // Neon Cyan
-  accentWarm: '#FF007A',      // Cyber Pink
-  accentGlow: 'rgba(112, 0, 255, 0.4)',
+  // Saily Warm Palette (Bold & Energetic)
+  accent: '#FF5C00',         // Safety Orange
+  accentSecondary: '#FFBC11', // Deep Amber
+  accentWarm: '#FF2D00',      // Vivid Coral
+  accentGlow: 'rgba(255, 92, 0, 0.4)',
 
   // Neobrutalist White/Black
   white: '#FFFFFF',
   black: '#000000',
 
-  // Text
+  // Text (Warm tinted)
   textPrimary: '#FFFFFF',
-  textSecondary: '#A0A0B8',
-  textMuted: '#505066',
+  textSecondary: '#D6C7B1',
+  textMuted: '#6C584C',
 
   // Semantic
-  success: '#00FF9D',
-  error: '#FF2E5B',
-  warning: '#FFB800',
+  success: '#32D74B',
+  error: '#FF453A',
+  warning: '#FF9F0A',
 
   // Glass tokens
   glass: 'rgba(255, 255, 255, 0.05)',
-  glassBorder: 'rgba(255, 255, 255, 0.1)',
+  glassBorder: 'rgba(255, 92, 0, 0.15)',
 };
 
 export const typography = {
+  // "Outfit" from Google Fonts - Geometric, Neat, Professional
+  family: {
+    regular: 'Outfit_400Regular',
+    medium: 'Outfit_500Medium',
+    bold: 'Outfit_700Bold',
+    black: 'Outfit_900Black',
+  },
   size: {
     xs: 12,
     sm: 14,
@@ -38,12 +45,6 @@ export const typography = {
     xl: 24,
     xxl: 32,
     huge: 48,
-  },
-  weight: {
-    regular: '400',
-    medium: '500',
-    bold: '700',
-    black: '900',
   },
 };
 
@@ -63,10 +64,10 @@ export const radius = {
   full: 9999,
 };
 
-// Neobrutalist Shadows (Sharp, bold)
+// Neobrutalist Shadows (Sharp, bold, Orange-tinted)
 export const shadows = {
   brutal: {
-    shadowColor: '#7000FF',
+    shadowColor: '#FF5C00',
     shadowOffset: { width: 6, height: 6 },
     shadowOpacity: 1,
     shadowRadius: 0,

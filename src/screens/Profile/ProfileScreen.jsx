@@ -61,6 +61,14 @@ export default function ProfileScreen() {
         <View style={styles.menuWrapper}>
             <BlurView intensity={20} tint="dark" style={styles.menuItem}>
                 <View style={styles.menuLeft}>
+                    <Grid color={colors.accentSecondary} size={20} />
+                    <Text style={styles.menuText}>Import Instagram Data</Text>
+                </View>
+                <ChevronRight color={colors.textMuted} />
+            </BlurView>
+
+            <BlurView intensity={20} tint="dark" style={styles.menuItem}>
+                <View style={styles.menuLeft}>
                     <Shield color={colors.success} size={20} />
                     <Text style={styles.menuText}>Privacy Vault</Text>
                 </View>
