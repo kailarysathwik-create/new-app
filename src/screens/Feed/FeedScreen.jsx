@@ -1,16 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, RefreshControl, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
-import { Heart, MessageCircle, Send, MoreHorizontal, Wind, Play } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Heart, MessageCircle, Send, MoreHorizontal, Wind, Play, Plus } from 'lucide-react-native';
 import { colors, spacing, radius, typography, shadows } from '../../theme/tokens';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
+import { uploadToCloud, downloadFromCloud } from '../../lib/cloudNode';
 
 const { width } = Dimensions.get('window');
 
-function BreezeItem({ profile, isOwn, index }) {
+function BreezeItem({ profile, isOwn, index, onAdd }) {
   return (
     <MotiView 
       from={{ opacity: 0, scale: 0.5 }}
@@ -18,25 +20,40 @@ function BreezeItem({ profile, isOwn, index }) {
       transition={{ delay: index * 100, type: 'spring' }}
       style={styles.storyContainer}
     >
-      <LinearGradient
-        colors={[colors.accent, colors.accentSecondary]}
-        style={styles.storyGradient}
-      >
-        <View style={styles.storyInner}>
-          {profile?.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={styles.storyImg} />
-          ) : (
-            <Text style={styles.storyInitial}>{profile?.username?.[0]?.toUpperCase() ?? '＋'}</Text>
-          )}
-        </View>
-      </LinearGradient>
-      <Text style={styles.storyUser} numberOfLines={1}>{isOwn ? 'Me' : profile?.username}</Text>
+      <TouchableOpacity onPress={isOwn ? onAdd : undefined}>
+        <LinearGradient
+            colors={isOwn && !profile?.avatar_url ? [colors.accent, colors.accentSecondary] : ['transparent', 'transparent']}
+            style={[styles.storyGradient, isOwn && !profile?.avatar_url && styles.storyGradientActive]}
+        >
+            <View style={styles.storyInner}>
+            {isOwn && !profile?.avatar_url ? (
+                <Plus color={colors.white} size={24} />
+            ) : profile?.avatar_url ? (
+                <Image source={{ uri: profile.avatar_url }} style={styles.storyImg} />
+            ) : (
+                <Text style={styles.storyInitial}>{profile?.username?.[0]?.toUpperCase() ?? '＋'}</Text>
+            )}
+            </View>
+        </LinearGradient>
+      </TouchableOpacity>
+      <Text style={styles.storyUser} numberOfLines={1}>{isOwn ? 'Add Breeze' : profile?.username}</Text>
     </MotiView>
   );
 }
 
 function PostCard({ post, index }) {
   const [liked, setLiked] = useState(false);
+  const [resolvedUri, setResolvedUri] = useState(post.media_url);
+  const { cloudNode } = useAuthStore();
+
+  useEffect(() => {
+    // If post is stored on the Cloud Node, we need to download/decrypt it
+    if (post.cloud_file_id && cloudNode?.accessToken) {
+        downloadFromCloud(post.cloud_file_id, cloudNode.accessToken).then(res => {
+            if (res.localUri) setResolvedUri(res.localUri);
+        });
+    }
+  }, [post.cloud_file_id, cloudNode]);
 
   return (
     <MotiView 
@@ -53,14 +70,14 @@ function PostCard({ post, index }) {
           />
           <View>
             <Text style={styles.postUsername}>{post.profiles?.username}</Text>
-            <Text style={styles.postLocation}>Saily Network</Text>
+            <Text style={styles.postLocation}>Saily Cloud Node</Text>
           </View>
         </View>
         <TouchableOpacity><MoreHorizontal color={colors.textMuted} /></TouchableOpacity>
       </View>
 
       <View style={styles.mediaWrapper}>
-        <Image source={{ uri: post.media_url }} style={styles.postMedia} />
+        <Image source={{ uri: resolvedUri }} style={styles.postMedia} />
       </View>
 
       <View style={styles.actionRow}>
@@ -84,10 +101,11 @@ function PostCard({ post, index }) {
 }
 
 export default function FeedScreen() {
-  const { profile } = useAuthStore();
+  const { profile, cloudNode, user } = useAuthStore();
   const [posts, setPosts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState('feed'); // 'feed' or 'reels'
+  const [activeTab, setActiveTab] = useState('feed'); 
+  const [isUploading, setIsUploading] = useState(false);
 
   const fetchFeed = useCallback(async () => {
     const { data } = await supabase
@@ -100,28 +118,92 @@ export default function FeedScreen() {
 
   useEffect(() => { fetchFeed(); }, [fetchFeed]);
 
+  const handleAddBreeze = async () => {
+    if (!cloudNode) {
+      Alert.alert("Cloud Node Required", "Please link your Saily Cloud Node in your Profile first to enable 5TB private storage.");
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+
+    if (result.canceled) return;
+
+    try {
+        setIsUploading(true);
+        const fileName = `post_${Date.now()}.jpg`;
+
+        // 1. Upload Encrypted to Cloud Node (Personal Storage)
+        const { fileId, error } = await uploadToCloud(
+            result.assets[0].uri, 
+            fileName, 
+            cloudNode.accessToken, 
+            cloudNode.folderId
+        );
+
+        if (error) throw error;
+
+        // 2. Save Metadata to Supabase
+        const { error: dbError } = await supabase.from('posts').insert({
+            user_id: user.id,
+            caption: "New Saily Breeze",
+            media_url: 'cloud://' + fileId, // Placeholder
+            cloud_file_id: fileId,
+        });
+
+        if (dbError) throw dbError;
+
+        Alert.alert("Breeze Launched!", "Your media is now securely sailing in your 5TB cloud folder.");
+        fetchFeed();
+    } catch (e) {
+        Alert.alert("Launch Failed", "Could not reach your cloud node: " + e.message);
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
   const renderFeed = () => (
-    <FlatList
-      data={posts}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item, index }) => <PostCard post={item} index={index} />}
-      ListHeaderComponent={() => (
-        <View style={styles.storiesWrapper}>
-           <View style={styles.breezeHeader}>
-              <Wind color={colors.accent} size={18} />
-              <Text style={styles.breezeTitle}>Latest Breezes</Text>
-           </View>
-           <FlatList
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              data={[{ isOwn: true, profiles: profile }, ...posts]}
-              renderItem={({ item, index }) => <BreezeItem profile={item.profiles} isOwn={item.isOwn} index={index} />}
-           />
-        </View>
+    <View style={{ flex: 1 }}>
+      {isUploading && (
+        <BlurView intensity={30} tint="dark" style={styles.uploadOverlay}>
+             <ActivityIndicator color={colors.accent} size="large" />
+             <Text style={styles.uploadText}>Sailing your media to your 5TB drive...</Text>
+        </BlurView>
       )}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchFeed()} tintColor={colors.accent} />}
-      contentContainerStyle={{ paddingBottom: 100 }}
-    />
+      <FlatList
+        data={posts}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, index }) => <PostCard post={item} index={index} />}
+        ListHeaderComponent={() => (
+            <View style={styles.storiesWrapper}>
+            <View style={styles.breezeHeader}>
+                <Wind color={colors.accent} size={18} />
+                <Text style={styles.breezeTitle}>Latest Breezes</Text>
+            </View>
+            <FlatList
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                data={[{ isOwn: true, profiles: profile }, ...posts]}
+                renderItem={({ item, index }) => (
+                    <BreezeItem 
+                        profile={item.profiles} 
+                        isOwn={item.isOwn} 
+                        index={index} 
+                        onAdd={handleAddBreeze}
+                    />
+                )}
+            />
+            </View>
+        )}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => fetchFeed()} tintColor={colors.accent} />}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      />
+    </View>
   );
 
   const renderReelsPlaceholder = () => (
@@ -146,7 +228,7 @@ export default function FeedScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={[colors.bg, '#1A0D05']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[colors.bg, '#1D120B']} style={StyleSheet.absoluteFill} />
       
       <BlurView intensity={30} tint="dark" style={styles.header}>
         <MotiView 
@@ -204,6 +286,7 @@ const styles = StyleSheet.create({
   },
   storyContainer: { alignItems: 'center', marginHorizontal: spacing.sm, paddingLeft: spacing.sm },
   storyGradient: { width: 68, height: 68, borderRadius: 34, padding: 3, justifyContent: 'center', alignItems: 'center' },
+  storyGradientActive: { borderWidth: 2, borderColor: colors.white, borderStyle: 'dashed' },
   storyInner: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 2, borderColor: colors.bg },
   storyImg: { width: '100%', height: '100%' },
   storyInitial: { color: colors.white, fontWeight: 'bold', fontSize: 20 },
@@ -212,9 +295,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary, 
     fontSize: 11, 
     marginTop: 4, 
-    textAlign: 'center' 
+    textAlign: 'center',
+    width: 68
   },
   
+  uploadOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, justifyContent: 'center', alignItems: 'center' },
+  uploadText: { fontFamily: typography.family.bold, color: colors.white, marginTop: 16, textAlign: 'center' },
+
   postCard: { marginBottom: spacing.xl },
   postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md },
   userInfo: { flexDirection: 'row', alignItems: 'center' },

@@ -6,6 +6,7 @@ CREATE TABLE public.profiles (
   avatar_url TEXT,
   is_public BOOLEAN DEFAULT true,
   public_key TEXT, -- Base64 encoded Curve25519 public key
+  cloud_node_folder_id TEXT, -- ID of the 'SAILY' folder on user's personal cloud
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
@@ -27,6 +28,7 @@ CREATE TABLE public.posts (
   caption TEXT,
   media_url TEXT NOT NULL, 
   thumbnail_url TEXT,
+  cloud_file_id TEXT, -- ID of the encrypted file on user's 'SAILY' cloud folder
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -36,6 +38,7 @@ CREATE TABLE public.stories (
   user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
   media_url TEXT NOT NULL,
   expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  cloud_file_id TEXT, -- ID of the encrypted story on user's 'SAILY' cloud folder
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 

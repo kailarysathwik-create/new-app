@@ -37,6 +37,27 @@ export async function decryptMessage(cipherB64, nonceB64, senderPublicKeyB64) {
   return decodeUTF8(decrypted);
 }
 
+// Symmetric encryption for large files (Vault / Media)
+export async function encryptFile(base64Data) {
+  const privateKeyB64 = await SecureStore.getItemAsync(PRIVATE_KEY_STORE);
+  // We use the first 32 bytes of the private key as a symmetric key for secretbox
+  const key = decodeBase64(privateKeyB64).slice(0, 32);
+  const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+  const messageUint8 = decodeBase64(base64Data);
+  const encrypted = nacl.secretbox(messageUint8, nonce, key);
+  return { cipher: encodeBase64(encrypted), nonce: encodeBase64(nonce) };
+}
+
+export async function decryptFile(cipherB64, nonceB64) {
+  const privateKeyB64 = await SecureStore.getItemAsync(PRIVATE_KEY_STORE);
+  const key = decodeBase64(privateKeyB64).slice(0, 32);
+  const nonce = decodeBase64(nonceB64);
+  const cipher = decodeBase64(cipherB64);
+  const decrypted = nacl.secretbox.open(cipher, nonce, key);
+  if (!decrypted) throw new Error('File decryption failed');
+  return encodeBase64(decrypted);
+}
+
 export async function getLocalPublicKey() {
   return await SecureStore.getItemAsync(PUBLIC_KEY_STORE);
 }

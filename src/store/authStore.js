@@ -1,12 +1,22 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { generateAndStoreKeypair, getLocalPublicKey } from '../crypto/encryption';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { findSailyFolder, createSailyFolder } from '../lib/cloudNode';
+
+// Configure Google Sign-In with the 'drive.file' scope as requested
+GoogleSignin.configure({
+    scopes: ['https://www.googleapis.com/auth/drive.file'],
+    // Use your Web Client ID from Google Cloud Console here
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '', 
+});
 
 export const useAuthStore = create((set, get) => ({
   user: null,
   profile: null,
   session: null,
   loading: false,
+  cloudNode: null, // { accessToken, folderId }
 
   setSession: (session) => set({ session, user: session?.user ?? null }),
 
@@ -24,11 +34,9 @@ export const useAuthStore = create((set, get) => ({
   signUpManual: async ({ identifier, password, username }) => {
     set({ loading: true });
     
-    // Check if identifier is email or phone
     const isEmail = identifier.includes('@');
     const authData = isEmail ? { email: identifier, password } : { phone: identifier, password };
 
-    // 1. Create Supabase Auth User
     const { data: authUser, error: authError } = await supabase.auth.signUp(authData);
 
     if (authError) {
@@ -36,11 +44,9 @@ export const useAuthStore = create((set, get) => ({
       return { error: authError };
     }
 
-    // 2. Initialise Crypto Keys on Device
     await generateAndStoreKeypair();
     const publicKey = await getLocalPublicKey();
 
-    // 3. Create Custom Profile
     const { error: profileError } = await supabase.from('profiles').insert({
       id: authUser.user.id,
       username: username,
@@ -58,7 +64,40 @@ export const useAuthStore = create((set, get) => ({
     return { data: authUser };
   },
 
-  // NEW: Manual Login
+  // Link the "SAILY" folder on Google Drive (Renamed to Cloud Node)
+  linkCloudNode: async () => {
+    try {
+      set({ loading: true });
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      const tokens = await GoogleSignin.getTokens();
+      
+      const accessToken = tokens.accessToken;
+
+      // Find or Create the folder named "SAILY" as requested
+      let folder = await findSailyFolder(accessToken);
+      if (!folder) {
+        folder = await createSailyFolder(accessToken);
+      }
+
+      // Save folder ID to Supabase profile for future sessions
+      const { error } = await supabase
+        .from('profiles')
+        .update({ cloud_node_folder_id: folder.id })
+        .eq('id', get().user.id);
+
+      if (error) throw error;
+
+      set({ cloudNode: { accessToken, folderId: folder.id }, loading: false });
+      await get().fetchProfile(get().user.id);
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to link cloud node:', error);
+      set({ loading: false });
+      return { error };
+    }
+  },
+
   signInManual: async ({ identifier, password }) => {
     set({ loading: true });
     const isEmail = identifier.includes('@');
@@ -76,6 +115,7 @@ export const useAuthStore = create((set, get) => ({
 
   signOut: async () => {
     await supabase.auth.signOut();
-    set({ user: null, profile: null, session: null });
+    await GoogleSignin.signOut();
+    set({ user: null, profile: null, session: null, cloudNode: null });
   },
 }));

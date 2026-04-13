@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Settings, LogOut, Shield, ChevronRight, Grid, Bookmark, Users } from 'lucide-react-native';
+import { MotiView } from 'moti';
+import { Settings, LogOut, Shield, ChevronRight, Grid, Bookmark, Users, Cloud, CheckCircle2 } from 'lucide-react-native';
 import { colors, spacing, radius, typography, shadows } from '../../theme/tokens';
 import { useAuthStore } from '../../store/authStore';
 
@@ -18,13 +19,26 @@ function StatItem({ label, count }) {
 }
 
 export default function ProfileScreen() {
-  const { profile, signOut } = useAuthStore();
+  const { profile, signOut, linkCloudNode, loading } = useAuthStore();
 
   if (!profile) return null;
 
+  const handleLinkCloud = async () => {
+    if (profile.cloud_node_folder_id) {
+        Alert.alert("Cloud Node Active", "Your 5TB Saily Cloud Node is already linked and healthy.");
+        return;
+    }
+    const result = await linkCloudNode();
+    if (result?.success) {
+        Alert.alert("Success", "SAILY folder created in your drive. Personal Cloud Node is now active!");
+    } else if (result?.error) {
+        Alert.alert("Link Failed", "Could not connect to your cloud storage.");
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <LinearGradient colors={[colors.bg, '#1A0033']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[colors.bg, '#1D120B']} style={StyleSheet.absoluteFill} />
       
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
@@ -48,7 +62,7 @@ export default function ProfileScreen() {
 
         <View style={styles.bioSection}>
             <Text style={styles.displayName}>{profile.username}</Text>
-            <Text style={styles.bioText}>{profile.bio || "Digital architect of the private web. Building the future of Veil."}</Text>
+            <Text style={styles.bioText}>{profile.bio || "Digital architect of the private web. Building the future of Saily."}</Text>
         </View>
 
         {/* Action Buttons (Brutal Style) */}
@@ -56,6 +70,33 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.mainBtn}><Text style={styles.mainBtnText}>Edit Profile</Text></TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn}><Users color={colors.black} size={20} /></TouchableOpacity>
         </View>
+
+        {/* Cloud Node Activation Card */}
+        <MotiView 
+            from={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={styles.cloudCardWrapper}
+        >
+            <TouchableOpacity onPress={handleLinkCloud} disabled={loading}>
+                <LinearGradient 
+                    colors={profile.cloud_node_folder_id ? ['#1A2E1A', '#0F1A0F'] : [colors.bgSurface, colors.bgCard]}
+                    style={styles.cloudCard}
+                >
+                    <View style={styles.cloudCardLeft}>
+                        <Cloud color={profile.cloud_node_folder_id ? colors.success : colors.accent} size={28} />
+                        <View style={{ marginLeft: spacing.md }}>
+                            <Text style={styles.cloudTitle}>{profile.cloud_node_folder_id ? "Cloud Node Active 🛰️" : "Link Cloud Node (5TB) ☁️"}</Text>
+                            <Text style={styles.cloudSub}>
+                                {profile.cloud_node_folder_id ? "Everything is synced to your SAILY folder." : "Use your own storage as the primary DB."}
+                            </Text>
+                        </View>
+                    </View>
+                    {loading ? <ActivityIndicator color={colors.white} /> : (
+                        profile.cloud_node_folder_id ? <CheckCircle2 color={colors.success} size={24} /> : <ChevronRight color={colors.textMuted} size={24} />
+                    )}
+                </LinearGradient>
+            </TouchableOpacity>
+        </MotiView>
 
         {/* Menu Items (Glassmorphism) */}
         <View style={styles.menuWrapper}>
@@ -107,7 +148,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxl,
     paddingBottom: spacing.md,
   },
-  username: { color: colors.white, fontSize: 18, fontWeight: '900', letterSpacing: 1 },
+  username: { fontFamily: typography.family.black, color: colors.white, fontSize: 18, letterSpacing: 1 },
   profileSection: {
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
@@ -123,11 +164,11 @@ const styles = StyleSheet.create({
   avatar: { width: 90, height: 90, borderRadius: 45, borderWidth: 3, borderColor: colors.bg },
   statsRow: { flex: 1, flexDirection: 'row', justifyContent: 'space-around', marginLeft: spacing.lg },
   statContainer: { alignItems: 'center' },
-  statCount: { color: colors.white, fontSize: 18, fontWeight: 'bold' },
-  statLabel: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+  statCount: { fontFamily: typography.family.black, color: colors.white, fontSize: 18 },
+  statLabel: { fontFamily: typography.family.medium, color: colors.textSecondary, fontSize: 11, marginTop: 2 },
   bioSection: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
-  displayName: { color: colors.white, fontSize: 16, fontWeight: 'bold' },
-  bioText: { color: colors.textSecondary, fontSize: 14, marginTop: 4, lineHeight: 20 },
+  displayName: { fontFamily: typography.family.bold, color: colors.white, fontSize: 16 },
+  bioText: { fontFamily: typography.family.regular, color: colors.textSecondary, fontSize: 14, marginTop: 4, lineHeight: 20 },
   btnRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
@@ -144,7 +185,7 @@ const styles = StyleSheet.create({
     ...shadows.brutal,
     marginRight: spacing.md,
   },
-  mainBtnText: { color: colors.black, fontWeight: '900', fontSize: 14 },
+  mainBtnText: { fontFamily: typography.family.black, color: colors.black, fontSize: 14 },
   iconBtn: {
     backgroundColor: colors.white,
     padding: 12,
@@ -153,7 +194,23 @@ const styles = StyleSheet.create({
     borderColor: colors.black,
     ...shadows.brutal,
   },
-  menuWrapper: { paddingHorizontal: spacing.lg, marginTop: spacing.xl },
+  
+  cloudCardWrapper: { paddingHorizontal: spacing.lg, marginTop: spacing.xl },
+  cloudCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.lg,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    overflow: 'hidden',
+  },
+  cloudCardLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  cloudTitle: { fontFamily: typography.family.black, color: colors.white, fontSize: 16 },
+  cloudSub: { fontFamily: typography.family.medium, color: colors.textSecondary, fontSize: 11, marginTop: 2 },
+
+  menuWrapper: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
   menuItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -165,5 +222,5 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   menuLeft: { flexDirection: 'row', alignItems: 'center' },
-  menuText: { color: colors.white, marginLeft: spacing.md, fontWeight: '600', fontSize: 14 },
+  menuText: { fontFamily: typography.family.bold, color: colors.white, marginLeft: spacing.md, fontSize: 14 },
 });
