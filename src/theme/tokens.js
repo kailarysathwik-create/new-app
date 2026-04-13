@@ -1,48 +1,82 @@
 export const colors = {
-  bg: '#0A0A0F',
-  bgCard: '#13131A',
-  bgSurface: '#1C1C28',
-  accent: '#7B5EA7',
-  accentGlow: '#A07ECC',
-  accentSecondary: '#4CC9F0',
-  accentWarm: '#F72585',
-  textPrimary: '#F0EEF6',
-  textSecondary: '#8B88A0',
-  textMuted: '#4A4860',
-  success: '#43D9A2',
-  error: '#FF4365',
-  warning: '#FFB703',
-  bubbleSent: '#7B5EA7',
-  bubbleReceived: '#1C1C28',
-  border: '#2E2B40',
-  borderStrong: '#7B5EA7',
-  glass: 'rgba(255,255,255,0.06)',
-  glassBorder: 'rgba(255,255,255,0.12)',
-  overlay: 'rgba(10,10,15,0.85)',
+  // Deep Space Backgrounds
+  bg: '#050508',
+  bgCard: '#0D0D14',
+  bgSurface: '#161622',
+
+  // Electric Accents (Vibrant)
+  accent: '#7000FF',         // Electric Purple
+  accentSecondary: '#00F5FF', // Neon Cyan
+  accentWarm: '#FF007A',      // Cyber Pink
+  accentGlow: 'rgba(112, 0, 255, 0.4)',
+
+  // Neobrutalist White/Black
+  white: '#FFFFFF',
+  black: '#000000',
+
+  // Text
+  textPrimary: '#FFFFFF',
+  textSecondary: '#A0A0B8',
+  textMuted: '#505066',
+
+  // Semantic
+  success: '#00FF9D',
+  error: '#FF2E5B',
+  warning: '#FFB800',
+
+  // Glass tokens
+  glass: 'rgba(255, 255, 255, 0.05)',
+  glassBorder: 'rgba(255, 255, 255, 0.1)',
 };
 
 export const typography = {
-  size: { xs: 11, sm: 13, md: 15, lg: 18, xl: 22, xxl: 28, heading: 34 },
-  weight: { regular: '400', medium: '500', semibold: '600', bold: '700', black: '900' },
+  size: {
+    xs: 12,
+    sm: 14,
+    md: 16,
+    lg: 20,
+    xl: 24,
+    xxl: 32,
+    huge: 48,
+  },
+  weight: {
+    regular: '400',
+    medium: '500',
+    bold: '700',
+    black: '900',
+  },
 };
 
-export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 16,
+  lg: 24,
+  xl: 32,
+  xxl: 64,
+};
 
-export const radius = { sm: 6, md: 12, lg: 20, xl: 28, full: 9999 };
+export const radius = {
+  sm: 4,
+  md: 12,
+  lg: 24,
+  full: 9999,
+};
 
+// Neobrutalist Shadows (Sharp, bold)
 export const shadows = {
-  glow: {
-    shadowColor: '#7B5EA7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
+  brutal: {
+    shadowColor: '#7000FF',
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 6,
   },
-  card: {
+  glass: {
     shadowColor: '#000',
-    shadowOffset: { width: 2, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 10,
   },
 };

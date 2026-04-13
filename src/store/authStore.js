@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { makeRedirectUri } from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import { generateAndStoreKeypair, getLocalPublicKey } from '../crypto/encryption';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export const useAuthStore = create((set, get) => ({
   user: null,
@@ -20,42 +24,46 @@ export const useAuthStore = create((set, get) => ({
     return data;
   },
 
-  signInWithOtp: async (email) => {
+  signInWithGoogle: async () => {
     set({ loading: true });
-    const { error } = await supabase.auth.signInWithOtp({ email });
-    set({ loading: false });
-    return { error };
-  },
+    
+    // Construct the redirect URL for mobile
+    const redirectUri = makeRedirectUri({
+      scheme: 'newapp',
+      preferLocalhost: true,
+    });
 
-  verifyOtp: async (email, token) => {
-    set({ loading: true });
-    const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-    if (!error && data.session) {
-      set({ session: data.session, user: data.session.user });
-      const profile = await get().fetchProfile(data.session.user.id);
-      if (!profile) {
-        const { publicKey } = await generateAndStoreKeypair();
-        set({ loading: false });
-        return { isNewUser: true, publicKey };
-      }
-      const existingKey = await getLocalPublicKey();
-      if (!existingKey) {
-        const { publicKey } = await generateAndStoreKeypair();
-        await supabase.from('profiles').update({ public_key: publicKey }).eq('id', data.session.user.id);
-      }
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUri,
+        skipBrowserRedirect: false,
+      },
+    });
+
+    if (error) {
+      console.error('Google Auth Error:', error.message);
+      set({ loading: false });
+      return { error };
     }
-    set({ loading: false });
-    return { error, isNewUser: false };
-  },
 
-  createProfile: async ({ userId, username, publicKey }) => {
-    const { error } = await supabase.from('profiles').insert({ id: userId, username, public_key: publicKey });
-    if (!error) await get().fetchProfile(userId);
-    return { error };
+    // Note: The rest of the handling happens in the Auth listener 
+    // in navigation/RootLayout or via the deep link callback.
+    return { data };
   },
 
   signOut: async () => {
     await supabase.auth.signOut();
     set({ user: null, profile: null, session: null });
+  },
+
+  createProfile: async ({ userId, username, publicKey }) => {
+    const { error } = await supabase.from('profiles').insert({
+      id: userId,
+      username,
+      public_key: publicKey,
+    });
+    if (!error) await get().fetchProfile(userId);
+    return { error };
   },
 }));
