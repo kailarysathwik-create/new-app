@@ -1,12 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Send, ShieldCheck, Lock, Info } from 'lucide-react-native';
-import { colors, spacing, radius, typography, shadows } from '../../theme/tokens';
+import { ArrowLeft, Send, Info } from 'lucide-react-native';
+import { colors, spacing, radius, typography, shadows, borders } from '../../theme/tokens';
 import { supabase } from '../../lib/supabase';
-import { encryptMessage, decryptMessage } from '../../crypto/encryption';
+import { decryptMessage, encryptMessage } from '../../crypto/encryption';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
 
@@ -18,23 +16,34 @@ export default function DirectMessageScreen() {
   const { appendMessage, setMessages, activeMessages } = useChatStore();
 
   const [inputText, setInputText] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [decryptedMessages, setDecryptedMessages] = useState({});
   const flatListRef = useRef(null);
 
   useEffect(() => {
     if (!conversationId) return;
     const sub = supabase.channel(`room:${conversationId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` }, payload => {
-      appendMessage(payload.new);
+      const msg = payload.new;
+      appendMessage(msg);
+      autoDecrypt(msg);
     }).subscribe();
     return () => supabase.removeChannel(sub);
   }, [conversationId]);
 
+  const autoDecrypt = useCallback(async (msg) => {
+    if (!recipientProfile?.public_key) return;
+    try {
+        const text = await decryptMessage(msg.encrypted_content, msg.nonce, recipientProfile.public_key);
+        setDecryptedMessages(prev => ({ ...prev, [msg.id]: text }));
+    } catch (e) {
+        setDecryptedMessages(prev => ({ ...prev, [msg.id]: "[Secure Message]" }));
+    }
+  }, [recipientProfile]);
+
   const fetchMessages = useCallback(async () => {
-    setLoading(true);
     const { data } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
     setMessages(data ?? []);
-    setLoading(false);
-  }, [conversationId]);
+    if (data) data.forEach(autoDecrypt);
+  }, [conversationId, autoDecrypt]);
 
   useEffect(() => { fetchMessages(); }, [fetchMessages]);
 
@@ -47,24 +56,19 @@ export default function DirectMessageScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={[colors.bg, '#050510']} style={StyleSheet.absoluteFill} />
-      
-      {/* Immersive Header */}
-      <BlurView intensity={40} tint="dark" style={styles.header}>
+      {/* Normal Header */}
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <ArrowLeft color={colors.white} size={24} />
+            <ArrowLeft color={colors.black} size={24} />
         </TouchableOpacity>
         
         <View style={styles.headerInfo}>
-            <Text style={styles.headerName}>{recipientProfile?.username}</Text>
-            <View style={styles.statusRow}>
-                <ShieldCheck size={12} color={colors.success} />
-                <Text style={styles.statusText}>E2E Encrypted</Text>
-            </View>
+            <Text style={styles.headerName}>{recipientProfile?.username || 'Chat'}</Text>
+            <Text style={styles.statusText}>Active Now</Text>
         </View>
 
-        <TouchableOpacity><Info color={colors.textMuted} size={20} /></TouchableOpacity>
-      </BlurView>
+        <TouchableOpacity><Info color={colors.black} size={20} /></TouchableOpacity>
+      </View>
 
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 
@@ -79,41 +83,28 @@ export default function DirectMessageScreen() {
           onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
           renderItem={({ item }) => {
             const isOwn = item.sender_id === profile.id;
+            const content = decryptedMessages[item.id];
+            
             return (
               <View style={[styles.bubbleWrapper, isOwn ? styles.ownWrapper : styles.receivedWrapper]}>
-                {!isOwn && (
-                    <View style={styles.receivedAvatar}>
-                        <Text style={styles.avatarTxt}>{recipientProfile?.username?.[0]?.toUpperCase()}</Text>
-                    </View>
-                )}
                 <View style={[styles.bubble, isOwn ? styles.bubbleSent : styles.bubbleReceived]}>
-                  {isOwn && (
-                    <LinearGradient 
-                        colors={[colors.accent, colors.accentSecondary]} 
-                        start={{x:0, y:0}} end={{x:1, y:1}}
-                        style={StyleSheet.absoluteFill} 
-                    />
-                  )}
-                  <View style={styles.bubbleContent}>
-                    <Lock size={12} color={isOwn ? colors.white : colors.accentSecondary} style={{ marginBottom: 4 }} />
-                    <Text style={[styles.bubbleText, isOwn && { color: colors.white }]}>
-                      🔒 Encrypted Message
-                    </Text>
-                  </View>
+                  <Text style={[styles.bubbleText, isOwn && { color: colors.white }]}>
+                    {content || "..."}
+                  </Text>
                 </View>
               </View>
             );
           }}
         />
 
-        {/* Floating Input Bar */}
-        <BlurView intensity={30} tint="dark" style={styles.inputArea}>
+        {/* Normal Input Bar */}
+        <View style={styles.inputArea}>
             <View style={styles.inputContainer}>
                 <TextInput 
                     style={styles.input} 
                     value={inputText} 
                     onChangeText={setInputText} 
-                    placeholder="Type in cipher..." 
+                    placeholder="Message..." 
                     placeholderTextColor={colors.textMuted}
                     multiline
                 />
@@ -125,7 +116,7 @@ export default function DirectMessageScreen() {
                     <Send color={colors.white} size={20} />
                 </TouchableOpacity>
             </View>
-        </BlurView>
+        </View>
       </KeyboardAvoidingView>
     </View>
   );
@@ -139,55 +130,90 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xxl,
     paddingBottom: spacing.md,
+    backgroundColor: colors.white,
+    borderBottomWidth: borders.thick,
+    borderColor: borders.color,
     justifyContent: 'space-between',
     zIndex: 10,
-    borderBottomWidth: 1,
-    borderColor: colors.glassBorder,
+    ...shadows.brutalSmall,
   },
-  backBtn: { padding: spacing.xs },
+  backBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   headerInfo: { alignItems: 'center' },
-  headerName: { color: colors.white, fontSize: 16, fontWeight: 'bold' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  statusText: { color: colors.success, fontSize: 10, marginLeft: 4, fontWeight: '600' },
+  headerName: { 
+    fontFamily: typography.family.black,
+    color: colors.black, 
+    fontSize: 18, 
+    textTransform: 'uppercase'
+  },
+  statusText: { 
+    fontFamily: typography.family.bold,
+    color: colors.success, 
+    fontSize: 10, 
+    marginTop: 2
+  },
   
   list: { padding: spacing.lg, paddingBottom: 40 },
-  bubbleWrapper: { flexDirection: 'row', marginBottom: spacing.md, alignItems: 'flex-end' },
+  bubbleWrapper: { flexDirection: 'row', marginBottom: spacing.md },
   ownWrapper: { justifyContent: 'flex-end' },
   receivedWrapper: { justifyContent: 'flex-start' },
-  receivedAvatar: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.bgSurface, justifyContent: 'center', alignItems: 'center', marginRight: 8, borderWidth: 1, borderColor: colors.glassBorder },
-  avatarTxt: { fontSize: 10, color: colors.textSecondary, fontWeight: 'bold' },
   
-  bubble: { maxWidth: '75%', borderRadius: 20, overflow: 'hidden', padding: spacing.md },
-  bubbleSent: { borderBottomRightRadius: 4, ...shadows.brutal, borderWidth: 1, borderColor: colors.black },
-  bubbleReceived: { backgroundColor: colors.bgSurface, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: colors.glassBorder },
-  bubbleContent: { zIndex: 1 },
-  bubbleText: { color: colors.textSecondary, fontSize: 14, fontWeight: '500' },
+  bubble: { 
+    maxWidth: '80%', 
+    padding: spacing.md,
+    borderWidth: borders.medium,
+    borderColor: borders.color,
+    ...shadows.brutalSmall,
+  },
+  bubbleSent: { 
+    backgroundColor: colors.accent,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    borderBottomLeftRadius: radius.lg,
+  },
+  bubbleReceived: { 
+    backgroundColor: colors.white,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    borderBottomRightRadius: radius.lg,
+  },
+  bubbleText: { 
+    fontFamily: typography.family.medium,
+    color: colors.black, 
+    fontSize: 15,
+  },
   
   inputArea: {
     paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.lg,
     paddingTop: spacing.md,
     paddingHorizontal: spacing.lg,
-    borderTopWidth: 1,
-    borderColor: colors.glassBorder,
+    backgroundColor: colors.white,
+    borderTopWidth: borders.thick,
+    borderColor: borders.color,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.bgSurface,
-    borderRadius: radius.full,
+    backgroundColor: colors.white,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
-    borderWidth: 1.5,
-    borderColor: colors.glassBorder,
   },
-  input: { flex: 1, color: colors.white, fontSize: 15, maxHeight: 100, paddingVertical: 8 },
+  input: { 
+    flex: 1, 
+    color: colors.black, 
+    fontFamily: typography.family.bold,
+    fontSize: 14, 
+    maxHeight: 100, 
+    paddingVertical: 12 
+  },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.accent,
+    width: 44,
+    height: 44,
+    backgroundColor: colors.black,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: radius.full,
     marginLeft: spacing.sm,
   },
 });
+
+

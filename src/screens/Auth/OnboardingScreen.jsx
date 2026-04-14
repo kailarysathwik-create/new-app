@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import { MotiView, AnimatePresence } from 'moti';
 import * as DocumentPicker from 'expo-document-picker';
 import { unzip } from 'react-native-zip-archive';
 import * as FileSystem from 'expo-file-system';
 import { router } from 'expo-router';
 import { Shield, Sparkles, User, Lock, Phone, Mail, CheckCircle, Package, ArrowRight, ArrowLeft } from 'lucide-react-native';
-import { colors, spacing, radius, typography, shadows } from '../../theme/tokens';
+import { colors, spacing, radius, typography, shadows, borders } from '../../theme/tokens';
 import { useAuthStore } from '../../store/authStore';
 
+const { width } = Dimensions.get('window');
+
 export default function OnboardingScreen() {
-  const [step, setStep] = useState(1); // 1: IG Import, 2: Identity, 3: Contact
+  const [step, setStep] = useState(1); // 1: IG Import, 2: Identity (Username/Password), 3: Contact
   const [loading, setLoading] = useState(false);
   
   // Step 1: IG Data
@@ -22,6 +22,7 @@ export default function OnboardingScreen() {
     posts: true,
     messages: false,
   });
+  const [useIgUsername, setUseIgUsername] = useState(true);
 
   // Step 2: Identity
   const [username, setUsername] = useState('');
@@ -50,8 +51,12 @@ export default function OnboardingScreen() {
       const hasPosts = folders.includes('content');
       const hasMessages = folders.includes('messages');
 
-      setIgData({ path: targetPath, hasProfile, hasPosts, hasMessages });
+      // Try to extract IG username if possible (simulated for now)
+      const mockIgUsername = "insta_user_123";
+
+      setIgData({ path: targetPath, hasProfile, hasPosts, hasMessages, igUsername: mockIgUsername });
       setCategories({ profile: hasProfile, posts: hasPosts, messages: hasMessages });
+      setUsername(mockIgUsername);
       
       Alert.alert("Success", "Instagram data recognized!");
     } catch (e) {
@@ -63,6 +68,10 @@ export default function OnboardingScreen() {
 
   const handleNextStep = () => {
     if (step === 2) {
+      if (!username) {
+        Alert.alert("Error", "Username is required");
+        return;
+      }
       if (password !== confirmPassword) {
         Alert.alert("Error", "Passwords do not match");
         return;
@@ -98,47 +107,69 @@ export default function OnboardingScreen() {
       style={styles.stepContainer}
     >
       <View style={styles.header}>
-        <Package color={colors.accent} size={48} />
-        <Text style={styles.title}>Port your World</Text>
-        <Text style={styles.subtitle}>Upload your Instagram ZIP export to automatically bring over your profile and posts.</Text>
+        <MotiView animate={{ rotate: loading ? '360deg' : '0deg' }}>
+            <Package color={colors.accent} size={64} />
+        </MotiView>
+        <Text style={styles.title}>PORT YOUR WORLD</Text>
+        <Text style={styles.subtitle}>Upload your Instagram export to bring over your history, or start fresh.</Text>
       </View>
 
       {!igData ? (
-        <TouchableOpacity style={styles.uploadBtn} onPress={pickZip} disabled={loading}>
-          {loading ? <ActivityIndicator color={colors.white} /> : (
-            <View style={styles.btnContent}>
-              <Sparkles color={colors.white} size={24} />
-              <Text style={styles.uploadBtnText}>Upload Instagram ZIP</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+        <View>
+            <TouchableOpacity style={styles.uploadBtn} onPress={pickZip} disabled={loading}>
+                <View style={[styles.btnInner, { backgroundColor: colors.accent }]}>
+                    <Sparkles color={colors.black} size={24} />
+                    <Text style={styles.uploadBtnText}>IMPORT INSTAGRAM ZIP</Text>
+                </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.skipBtn} onPress={() => setStep(2)}>
+                <View style={[styles.btnInner, { backgroundColor: colors.white }]}>
+                    <Text style={styles.skipBtnText}>SKIP TO SAILY</Text>
+                    <ArrowRight color={colors.black} size={20} />
+                </View>
+            </TouchableOpacity>
+        </View>
       ) : (
-        <MotiView 
-          from={{ opacity: 0, translateY: 10 }}
-          animate={{ opacity: 1, translateY: 0 }}
-          style={styles.categoryCard}
-        >
-          <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
-          <Text style={styles.cardTitle}>Available to Import:</Text>
+        <View style={styles.importCard}>
+          <Text style={styles.cardTitle}>WHAT TO BRING?</Text>
           <TouchableOpacity style={styles.checkRow} onPress={() => setCategories({...categories, profile: !categories.profile})}>
-             <CheckCircle color={categories.profile ? colors.success : colors.textMuted} size={20} />
+             <CheckCircle color={categories.profile ? colors.success : colors.textMuted} size={24} />
              <Text style={styles.checkText}>Profile & Name</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.checkRow} onPress={() => setCategories({...categories, posts: !categories.posts})}>
-             <CheckCircle color={categories.posts ? colors.success : colors.textMuted} size={20} />
-             <Text style={styles.checkText}>Post History (Feed)</Text>
+             <CheckCircle color={categories.posts ? colors.success : colors.textMuted} size={24} />
+             <Text style={styles.checkText}>Posts & Feed</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.checkRow} onPress={() => setCategories({...categories, messages: !categories.messages})}>
-             <CheckCircle color={categories.messages ? colors.success : colors.textMuted} size={20} />
-             <Text style={styles.checkText}>Chat Archives</Text>
+             <CheckCircle color={categories.messages ? colors.success : colors.textMuted} size={24} />
+             <Text style={styles.checkText}>Direct Messages</Text>
           </TouchableOpacity>
-        </MotiView>
-      )}
 
-      <TouchableOpacity style={styles.nextBtn} onPress={handleNextStep}>
-        <Text style={styles.nextBtnText}>{igData ? "Use Selected Data" : "Continue to Saily (Skip)"}</Text>
-        <ArrowRight color={colors.black} size={20} />
-      </TouchableOpacity>
+          <View style={styles.divider} />
+          
+          <Text style={styles.cardTitle}>USERNAME</Text>
+          <View style={styles.usernameToggle}>
+            <TouchableOpacity 
+                style={[styles.toggleBtn, useIgUsername && styles.toggleActive]} 
+                onPress={() => { setUseIgUsername(true); setUsername(igData.igUsername); }}
+            >
+                <Text style={[styles.toggleText, useIgUsername && styles.toggleTextActive]}>KEEP IG ID</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+                style={[styles.toggleBtn, !useIgUsername && styles.toggleActive]} 
+                onPress={() => { setUseIgUsername(false); setUsername(''); }}
+            >
+                <Text style={[styles.toggleText, !useIgUsername && styles.toggleTextActive]}>NEW ID</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <TouchableOpacity style={styles.nextBtn} onPress={handleNextStep}>
+            <Text style={styles.nextBtnText}>USE THESE SETTINGS</Text>
+            <ArrowRight color={colors.black} size={22} />
+          </TouchableOpacity>
+        </View>
+      )}
     </MotiView>
   );
 
@@ -150,47 +181,43 @@ export default function OnboardingScreen() {
       style={styles.stepContainer}
     >
       <View style={styles.header}>
-        <Shield color={colors.accentSecondary} size={48} />
-        <Text style={styles.title}>Secure your Node</Text>
-        <Text style={styles.subtitle}>Choose your unique Saily ID and a strong password.</Text>
+        <Shield color={colors.accent} size={64} />
+        <Text style={styles.title}>IDENTITY</Text>
+        <Text style={styles.subtitle}>Set your Saily ID and your master password.</Text>
       </View>
 
-      <View style={styles.inputWrapper}>
-        <User color={colors.textMuted} size={20} style={styles.inputIcon} />
+      <View style={styles.brutalCard}>
+        <Text style={styles.inputLabel}>SAILY ID (USERNAME)</Text>
         <TextInput 
           style={styles.input} 
-          placeholder="Choose Username" 
+          placeholder="e.g. sailor_x" 
           placeholderTextColor={colors.textMuted}
           value={username} onChangeText={setUsername}
         />
-      </View>
 
-      <View style={styles.inputWrapper}>
-        <Lock color={colors.textMuted} size={20} style={styles.inputIcon} />
+        <Text style={styles.inputLabel}>MASTER PASSWORD</Text>
         <TextInput 
           style={styles.input} 
-          placeholder="Secure Password" 
+          placeholder="At least 6 chars" 
           placeholderTextColor={colors.textMuted} 
           secureTextEntry 
           value={password} onChangeText={setPassword}
         />
-      </View>
 
-      <View style={styles.inputWrapper}>
-        <Lock color={colors.textMuted} size={20} style={styles.inputIcon} />
+        <Text style={styles.inputLabel}>CONFIRM PASSWORD</Text>
         <TextInput 
           style={styles.input} 
-          placeholder="Confirm Password" 
+          placeholder="Repeat password" 
           placeholderTextColor={colors.textMuted} 
           secureTextEntry 
           value={confirmPassword} onChangeText={setConfirmPassword}
         />
-      </View>
 
-      <TouchableOpacity style={styles.nextBtn} onPress={handleNextStep}>
-        <Text style={styles.nextBtnText}>Verify & Proceed</Text>
-        <ArrowRight color={colors.black} size={20} />
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.nextBtn} onPress={handleNextStep}>
+            <Text style={styles.nextBtnText}>VERIFY IDENTITY</Text>
+            <ArrowRight color={colors.black} size={22} />
+        </TouchableOpacity>
+      </View>
     </MotiView>
   );
 
@@ -201,56 +228,43 @@ export default function OnboardingScreen() {
       style={styles.stepContainer}
     >
       <View style={styles.header}>
-        <Phone color={colors.accentWarm} size={48} />
-        <Text style={styles.title}>Stay Connected</Text>
-        <Text style={styles.subtitle}>Add your mobile or email to recover your account.</Text>
+        <Phone color={colors.accent} size={64} />
+        <Text style={styles.title}>CONNECTION</Text>
+        <Text style={styles.subtitle}>Add your mobile or email for recovery.</Text>
       </View>
 
       <View style={styles.tabHeader}>
         <TouchableOpacity style={[styles.tab, isEmail && styles.tabActive]} onPress={() => setIsEmail(true)}>
-          <Mail color={isEmail ? colors.white : colors.textMuted} size={18} />
-          <Text style={[styles.tabLabel, isEmail && styles.tabLabelActive]}>Email</Text>
+          <Text style={[styles.tabLabel, isEmail && styles.tabLabelActive]}>EMAIL</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.tab, !isEmail && styles.tabActive]} onPress={() => setIsEmail(false)}>
-          <Phone color={!isEmail ? colors.white : colors.textMuted} size={18} />
-          <Text style={[styles.tabLabel, !isEmail && styles.tabLabelActive]}>Mobile</Text>
+          <Text style={[styles.tabLabel, !isEmail && styles.tabLabelActive]}>MOBILE</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.inputWrapper}>
-        {isEmail ? <Mail color={colors.textMuted} size={20} style={styles.inputIcon} /> : <Phone color={colors.textMuted} size={20} style={styles.inputIcon} />}
+      <View style={styles.brutalCard}>
+        <Text style={styles.inputLabel}>{isEmail ? 'EMAIL ADDRESS' : 'MOBILE NUMBER'}</Text>
         <TextInput 
           style={styles.input} 
-          placeholder={isEmail ? "your@email.com" : "+1 (555) 000-0000"} 
+          placeholder={isEmail ? "name@server.com" : "+1 ..."} 
           placeholderTextColor={colors.textMuted} 
           value={contact} onChangeText={setContact}
           keyboardType={isEmail ? 'email-address' : 'phone-pad'}
         />
-      </View>
 
-      <TouchableOpacity style={styles.finishBtn} onPress={handleFinish} disabled={loading}>
-        {loading ? <ActivityIndicator color={colors.white} /> : <Text style={styles.finishBtnText}>Launch into Saily 🚀</Text>}
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.finishBtn} onPress={handleFinish} disabled={loading}>
+            <Text style={styles.finishBtnText}>{loading ? 'LAUNCHING...' : 'START SAILING 🚀'}</Text>
+        </TouchableOpacity>
+      </View>
     </MotiView>
   );
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={[colors.bg, '#1D120B']} style={StyleSheet.absoluteFill} />
-      
       <View style={styles.progress}>
-        <MotiView 
-          animate={{ backgroundColor: step >= 1 ? colors.accent : colors.bgSurface }} 
-          style={styles.pBar} 
-        />
-        <MotiView 
-          animate={{ backgroundColor: step >= 2 ? colors.accent : colors.bgSurface }} 
-          style={styles.pBar} 
-        />
-        <MotiView 
-          animate={{ backgroundColor: step >= 3 ? colors.accent : colors.bgSurface }} 
-          style={styles.pBar} 
-        />
+        <MotiView animate={{ backgroundColor: step >= 1 ? colors.accent : colors.white, flex: step >= 1 ? 1 : 0.2 }} style={styles.pBar} />
+        <MotiView animate={{ backgroundColor: step >= 2 ? colors.accent : colors.white, flex: step >= 2 ? 1 : 0.2 }} style={styles.pBar} />
+        <MotiView animate={{ backgroundColor: step >= 3 ? colors.accent : colors.white, flex: step >= 3 ? 1 : 0.2 }} style={styles.pBar} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -262,12 +276,9 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       {step > 1 && (
-        <MotiView from={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => setStep(step - 1)}>
-            <ArrowLeft color={colors.textMuted} size={20} />
-            <Text style={styles.backBtnText}>Back</Text>
-          </TouchableOpacity>
-        </MotiView>
+        <TouchableOpacity style={styles.backBtn} onPress={() => setStep(step - 1)}>
+            <ArrowLeft color={colors.white} size={24} />
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -275,89 +286,113 @@ export default function OnboardingScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  scroll: { padding: spacing.xl, paddingTop: spacing.xxl },
-  progress: { flexDirection: 'row', paddingHorizontal: spacing.xl, marginTop: spacing.xxl, height: 4 },
-  pBar: { flex: 1, marginHorizontal: 2, borderRadius: 2 },
+  scroll: { padding: spacing.xl, paddingTop: spacing.xl },
+  progress: { flexDirection: 'row', paddingHorizontal: spacing.xl, marginTop: 60, height: 6, gap: 8 },
+  pBar: { height: '100%', borderWidth: 1, borderColor: colors.black },
+  
   stepContainer: { flex: 1 },
-  header: { marginBottom: spacing.xl, alignItems: 'center' },
+  header: { marginBottom: spacing.xxl, alignItems: 'center' },
   title: { 
     fontFamily: typography.family.black,
-    fontSize: 28, 
-    color: colors.white, 
-    marginTop: 16, 
-    marginBottom: 8, 
+    fontSize: 32, color: colors.white, 
+    marginTop: 16, marginBottom: 8, 
     textAlign: 'center' 
   },
   subtitle: { 
-    fontFamily: typography.family.medium,
-    fontSize: 14, 
-    color: colors.textSecondary, 
-    textAlign: 'center', 
-    lineHeight: 22 
-  },
-  
-  uploadBtn: { marginTop: spacing.xl, borderRadius: radius.md, overflow: 'hidden', ...shadows.brutal, borderWidth: 2, borderColor: colors.black },
-  btnContent: { backgroundColor: colors.accent, paddingVertical: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
-  uploadBtnText: { 
     fontFamily: typography.family.bold,
-    color: colors.white, 
-    fontSize: 16, 
-    marginLeft: 12 
+    fontSize: 14, color: colors.textSecondary, 
+    textAlign: 'center', lineHeight: 20,
+    paddingHorizontal: 20
   },
   
-  categoryCard: { marginTop: spacing.lg, padding: spacing.lg, borderRadius: radius.md, borderWidth: 1, borderColor: colors.glassBorder, overflow: 'hidden' },
-  cardTitle: { 
-    fontFamily: typography.family.bold,
-    color: colors.white, 
-    marginBottom: spacing.md 
+  btnInner: { 
+    paddingVertical: 18, 
+    paddingHorizontal: 24, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    borderWidth: borders.medium,
+    borderColor: colors.black,
+    ...shadows.brutalSmall
   },
-  checkRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 },
-  checkText: { 
-    fontFamily: typography.family.regular,
-    color: colors.textSecondary, 
-    marginLeft: 12, 
-    fontSize: 15 
-  },
+  uploadBtn: { marginBottom: spacing.md },
+  uploadBtnText: { fontFamily: typography.family.black, color: colors.black, fontSize: 16, marginLeft: 12 },
   
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.bgSurface, borderRadius: radius.md, paddingHorizontal: spacing.md, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.glassBorder },
-  inputIcon: { marginRight: spacing.sm },
+  skipBtn: { marginBottom: spacing.md },
+  skipBtnText: { fontFamily: typography.family.black, color: colors.black, fontSize: 16, marginRight: 12 },
+  
+  importCard: { 
+    backgroundColor: colors.white, 
+    padding: spacing.xl, 
+    borderWidth: borders.thick, 
+    borderColor: colors.black, 
+    ...shadows.brutal 
+  },
+  cardTitle: { fontFamily: typography.family.black, fontSize: 12, color: colors.black, marginBottom: spacing.md },
+  checkRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
+  checkText: { fontFamily: typography.family.bold, color: colors.black, marginLeft: 12, fontSize: 16 },
+  divider: { height: 2, backgroundColor: colors.black, marginVertical: 20 },
+  
+  usernameToggle: { flexDirection: 'row', gap: 10, marginBottom: spacing.lg },
+  toggleBtn: { 
+    flex: 1, paddingVertical: 12, 
+    backgroundColor: colors.white, 
+    borderWidth: 2, borderColor: colors.black, 
+    alignItems: 'center' 
+  },
+  toggleActive: { backgroundColor: colors.accent },
+  toggleText: { fontFamily: typography.family.black, fontSize: 11, color: colors.black },
+  toggleTextActive: { color: colors.black },
+
+  brutalCard: {
+    backgroundColor: colors.white,
+    padding: spacing.xl,
+    borderWidth: borders.thick,
+    borderColor: colors.black,
+    ...shadows.brutal
+  },
+  inputLabel: { fontFamily: typography.family.black, fontSize: 10, color: colors.black, marginBottom: 8, marginTop: 12 },
   input: { 
-    fontFamily: typography.family.regular,
-    flex: 1, 
-    paddingVertical: 16, 
-    color: colors.white, 
-    fontSize: 16 
-  },
-  
-  tabHeader: { flexDirection: 'row', backgroundColor: colors.bgSurface, borderRadius: radius.md, padding: 4, marginBottom: spacing.lg },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 10, borderRadius: radius.sm },
-  tabActive: { backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.glassBorder },
-  tabLabel: { 
     fontFamily: typography.family.bold,
-    color: colors.textMuted, 
-    marginLeft: 8 
-  },
-  tabLabelActive: { color: colors.white },
-  
-  nextBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.white, borderRadius: radius.md, paddingVertical: 16, marginTop: spacing.xl, ...shadows.brutal, borderWidth: 2, borderColor: colors.black },
-  nextBtnText: { 
-    fontFamily: typography.family.black,
-    color: colors.black, 
-    fontSize: 16, 
-    marginRight: 8 
+    fontSize: 14, color: colors.black, 
+    borderWidth: 2, borderColor: colors.black,
+    padding: 14, marginBottom: spacing.sm
   },
   
-  finishBtn: { backgroundColor: colors.accent, borderRadius: radius.md, paddingVertical: 16, marginTop: spacing.xl, alignItems: 'center', ...shadows.brutal, borderWidth: 2, borderColor: colors.black },
-  finishBtnText: { 
-    fontFamily: typography.family.black,
-    color: colors.white, 
-    fontSize: 16 
+  tabHeader: { flexDirection: 'row', gap: 8, marginBottom: spacing.md },
+  tab: { 
+    flex: 1, paddingVertical: 12, 
+    backgroundColor: colors.white, 
+    borderWidth: 2, borderColor: colors.black, 
+    alignItems: 'center' 
   },
+  tabActive: { backgroundColor: colors.accent, ...shadows.brutalSmall },
+  tabLabel: { fontFamily: typography.family.black, fontSize: 12, color: colors.black },
+
+  nextBtn: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', 
+    backgroundColor: colors.accent, 
+    paddingVertical: 18, marginTop: spacing.xl, 
+    borderWidth: 2, borderColor: colors.black,
+    ...shadows.brutalSmall
+  },
+  nextBtnText: { fontFamily: typography.family.black, color: colors.black, fontSize: 16, marginRight: 12 },
   
-  backBtn: { position: 'absolute', bottom: spacing.xxl, left: spacing.xl, flexDirection: 'row', alignItems: 'center' },
-  backBtnText: { 
-    fontFamily: typography.family.bold,
-    color: colors.textMuted, 
-    marginLeft: 8 
+  finishBtn: { 
+    backgroundColor: colors.accent, 
+    paddingVertical: 18, marginTop: spacing.xl, 
+    alignItems: 'center', 
+    borderWidth: 2, borderColor: colors.black,
+    ...shadows.brutalSmall
+  },
+  finishBtnText: { fontFamily: typography.family.black, color: colors.black, fontSize: 18 },
+  
+  backBtn: { 
+    position: 'absolute', top: 56, left: spacing.xl, 
+    width: 44, height: 44, 
+    backgroundColor: colors.black, 
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: colors.white
   },
 });
+

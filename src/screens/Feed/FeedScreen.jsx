@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, RefreshControl, Dimensions, Alert, ActivityIndicator } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MotiView } from 'moti';
 import * as ImagePicker from 'expo-image-picker';
-import { Heart, MessageCircle, Send, MoreHorizontal, Wind, Play, Plus } from 'lucide-react-native';
-import { colors, spacing, radius, typography, shadows } from '../../theme/tokens';
+import { Heart, MessageCircle, Send, MoreHorizontal, Wind, Play, Plus, ShieldCheck } from 'lucide-react-native';
+import { colors, spacing, radius, typography, shadows, borders } from '../../theme/tokens';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
 import { uploadToCloud, downloadFromCloud } from '../../lib/cloudNode';
@@ -21,10 +20,7 @@ function BreezeItem({ profile, isOwn, index, onAdd }) {
       style={styles.storyContainer}
     >
       <TouchableOpacity onPress={isOwn ? onAdd : undefined}>
-        <LinearGradient
-            colors={isOwn && !profile?.avatar_url ? [colors.accent, colors.accentSecondary] : ['transparent', 'transparent']}
-            style={[styles.storyGradient, isOwn && !profile?.avatar_url && styles.storyGradientActive]}
-        >
+        <View style={[styles.storyFrame, isOwn && styles.storyFrameOwn]}>
             <View style={styles.storyInner}>
             {isOwn && !profile?.avatar_url ? (
                 <Plus color={colors.white} size={24} />
@@ -34,9 +30,9 @@ function BreezeItem({ profile, isOwn, index, onAdd }) {
                 <Text style={styles.storyInitial}>{profile?.username?.[0]?.toUpperCase() ?? '＋'}</Text>
             )}
             </View>
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
-      <Text style={styles.storyUser} numberOfLines={1}>{isOwn ? 'Add Breeze' : profile?.username}</Text>
+      <Text style={styles.storyUser} numberOfLines={1}>{isOwn ? 'NEW' : profile?.username}</Text>
     </MotiView>
   );
 }
@@ -47,7 +43,6 @@ function PostCard({ post, index }) {
   const { cloudNode } = useAuthStore();
 
   useEffect(() => {
-    // If post is stored on the Cloud Node, we need to download/decrypt it
     if (post.cloud_file_id && cloudNode?.accessToken) {
         downloadFromCloud(post.cloud_file_id, cloudNode.accessToken).then(res => {
             if (res.localUri) setResolvedUri(res.localUri);
@@ -64,29 +59,34 @@ function PostCard({ post, index }) {
     >
       <View style={styles.postHeader}>
         <View style={styles.userInfo}>
-          <Image 
-            source={{ uri: post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.username}` }} 
-            style={styles.postAvatar} 
-          />
+          <View style={styles.avatarFrame}>
+            <Image 
+                source={{ uri: post.profiles?.avatar_url || `https://ui-avatars.com/api/?name=${post.profiles?.username}` }} 
+                style={styles.postAvatar} 
+            />
+          </View>
           <View>
             <Text style={styles.postUsername}>{post.profiles?.username}</Text>
-            <Text style={styles.postLocation}>Saily Cloud Node</Text>
+            <View style={styles.secureRow}>
+                <ShieldCheck size={10} color={colors.black} />
+                <Text style={styles.secureText}>DRIVE SECURED</Text>
+            </View>
           </View>
         </View>
-        <TouchableOpacity><MoreHorizontal color={colors.textMuted} /></TouchableOpacity>
+        <TouchableOpacity style={styles.moreBtn}><MoreHorizontal color={colors.black} size={20} /></TouchableOpacity>
       </View>
 
-      <View style={styles.mediaWrapper}>
+      <View style={styles.mediaFrame}>
         <Image source={{ uri: resolvedUri }} style={styles.postMedia} />
       </View>
 
       <View style={styles.actionRow}>
         <View style={styles.leftActions}>
           <TouchableOpacity onPress={() => setLiked(!liked)} style={styles.actionIcon}>
-            <Heart size={24} color={liked ? colors.accentWarm : colors.white} fill={liked ? colors.accentWarm : 'transparent'} />
+            <Heart size={26} color={colors.black} fill={liked ? colors.accentWarm : 'transparent'} strokeWidth={3} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionIcon}><MessageCircle size={24} color={colors.white} /></TouchableOpacity>
-          <TouchableOpacity style={styles.actionIcon}><Send size={24} color={colors.white} /></TouchableOpacity>
+          <TouchableOpacity style={styles.actionIcon}><MessageCircle size={26} color={colors.black} strokeWidth={3} /></TouchableOpacity>
+          <TouchableOpacity style={styles.actionIcon}><Send size={26} color={colors.black} strokeWidth={3} /></TouchableOpacity>
         </View>
       </View>
 
@@ -94,7 +94,7 @@ function PostCard({ post, index }) {
         <Text style={styles.captionText}>
           <Text style={styles.captionBold}>{post.profiles?.username}</Text> {post.caption}
         </Text>
-        <Text style={styles.timeAgo}>Verified Saily Voyage</Text>
+        <Text style={styles.timeLabel}>VERIFIED CIPHER</Text>
       </View>
     </MotiView>
   );
@@ -120,7 +120,7 @@ export default function FeedScreen() {
 
   const handleAddBreeze = async () => {
     if (!cloudNode) {
-      Alert.alert("Cloud Node Required", "Please link your Saily Cloud Node in your Profile first to enable 5TB private storage.");
+      Alert.alert("Cloud Node Required", "Link your 5TB Google Drive in Profile to enable secure social voyage.");
       return;
     }
 
@@ -137,31 +137,20 @@ export default function FeedScreen() {
     try {
         setIsUploading(true);
         const fileName = `post_${Date.now()}.jpg`;
-
-        // 1. Upload Encrypted to Cloud Node (Personal Storage)
-        const { fileId, error } = await uploadToCloud(
-            result.assets[0].uri, 
-            fileName, 
-            cloudNode.accessToken, 
-            cloudNode.folderId
-        );
-
+        const { fileId, error } = await uploadToCloud(result.assets[0].uri, fileName, cloudNode.accessToken, cloudNode.folderId);
         if (error) throw error;
 
-        // 2. Save Metadata to Supabase
         const { error: dbError } = await supabase.from('posts').insert({
             user_id: user.id,
-            caption: "New Saily Breeze",
-            media_url: 'cloud://' + fileId, // Placeholder
+            caption: "NEW SECURE VOYAGE",
+            media_url: 'cloud://' + fileId,
             cloud_file_id: fileId,
         });
 
         if (dbError) throw dbError;
-
-        Alert.alert("Breeze Launched!", "Your media is now securely sailing in your 5TB cloud folder.");
         fetchFeed();
     } catch (e) {
-        Alert.alert("Launch Failed", "Could not reach your cloud node: " + e.message);
+        Alert.alert("Voyage Failed", e.message);
     } finally {
         setIsUploading(false);
     }
@@ -170,10 +159,10 @@ export default function FeedScreen() {
   const renderFeed = () => (
     <View style={{ flex: 1 }}>
       {isUploading && (
-        <BlurView intensity={30} tint="dark" style={styles.uploadOverlay}>
-             <ActivityIndicator color={colors.accent} size="large" />
-             <Text style={styles.uploadText}>Sailing your media to your 5TB drive...</Text>
-        </BlurView>
+        <View style={styles.uploadOverlay}>
+             <ActivityIndicator color={colors.black} size="large" />
+             <Text style={styles.uploadText}>ANCHORING TO 5TB DRIVE...</Text>
+        </View>
       )}
       <FlatList
         data={posts}
@@ -182,8 +171,8 @@ export default function FeedScreen() {
         ListHeaderComponent={() => (
             <View style={styles.storiesWrapper}>
             <View style={styles.breezeHeader}>
-                <Wind color={colors.accent} size={18} />
-                <Text style={styles.breezeTitle}>Latest Breezes</Text>
+                <Wind color={colors.black} size={18} strokeWidth={3} />
+                <Text style={styles.breezeTitle}>ACTIVE BREEZES</Text>
             </View>
             <FlatList
                 horizontal
@@ -206,154 +195,105 @@ export default function FeedScreen() {
     </View>
   );
 
-  const renderReelsPlaceholder = () => (
-    <MotiView 
-        from={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        style={styles.reelsContainer}
-    >
-        <MotiView
-          animate={{ rotate: '360deg' }}
-          transition={{ loop: true, duration: 4000, type: 'timing' }}
-        >
-          <Play color={colors.accentSecondary} size={64} style={{ marginBottom: 16 }} />
-        </MotiView>
-        <Text style={styles.reelsTitle}>Reels on the way!</Text>
-        <Text style={styles.reelsText}>We are gathering data to build your perfect ocean algorithm.</Text>
-        <TouchableOpacity style={styles.inviteBtn}>
-            <Text style={styles.inviteBtnText}>Invite Friends to Saily</Text>
-        </TouchableOpacity>
-    </MotiView>
-  );
-
   return (
     <View style={styles.container}>
-      <LinearGradient colors={[colors.bg, '#1D120B']} style={StyleSheet.absoluteFill} />
-      
-      <BlurView intensity={30} tint="dark" style={styles.header}>
-        <MotiView 
-          from={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          style={styles.headerInner}
-        >
-          <Text style={styles.headerTitle}>SAILY</Text>
-          <View style={styles.tabRow}>
-              <TouchableOpacity onPress={() => setActiveTab('feed')} style={[styles.tab, activeTab === 'feed' && styles.tabActive]}>
-                  <Text style={[styles.tabText, activeTab === 'feed' && styles.tabTextActive]}>Feed</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setActiveTab('reels')} style={[styles.tab, activeTab === 'reels' && styles.tabActive]}>
-                  <Text style={[styles.tabText, activeTab === 'reels' && styles.tabTextActive]}>Reels</Text>
-              </TouchableOpacity>
-          </View>
-        </MotiView>
-      </BlurView>
+      {/* Brutalist Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>SAILY</Text>
+        <View style={styles.tabRow}>
+            <TouchableOpacity onPress={() => setActiveTab('feed')} style={[styles.tab, activeTab === 'feed' && styles.tabActive]}>
+                <Text style={[styles.tabText, activeTab === 'feed' && styles.tabTextActive]}>FEED</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setActiveTab('reels')} style={[styles.tab, activeTab === 'reels' && styles.tabActive]}>
+                <Text style={[styles.tabText, activeTab === 'reels' && styles.tabTextActive]}>REELS</Text>
+            </TouchableOpacity>
+        </View>
+      </View>
 
-      {activeTab === 'feed' ? renderFeed() : renderReelsPlaceholder()}
+      {renderFeed()}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: spacing.lg, paddingTop: spacing.xxl, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.glassBorder, zIndex: 10, overflow: 'hidden' },
-  headerInner: { alignItems: 'center' },
+  header: { 
+    paddingHorizontal: spacing.lg, 
+    paddingTop: spacing.xxl, 
+    paddingBottom: spacing.md, 
+    backgroundColor: colors.accent,
+    borderBottomWidth: borders.thick, 
+    borderBottomColor: borders.color, 
+    zIndex: 10,
+    ...shadows.brutalSmall
+  },
   headerTitle: { 
     fontFamily: typography.family.black,
-    fontSize: typography.size.xl, 
-    color: colors.white, 
-    letterSpacing: 2, 
+    fontSize: 28, 
+    color: colors.black, 
+    letterSpacing: 1, 
     textAlign: 'center', 
     marginBottom: 12 
   },
   tabRow: { flexDirection: 'row', justifyContent: 'center' },
-  tab: { paddingHorizontal: spacing.lg, paddingVertical: 6, borderRadius: radius.full, marginHorizontal: 4 },
-  tabActive: { backgroundColor: colors.accent },
-  tabText: { 
-    fontFamily: typography.family.bold,
-    color: colors.textSecondary, 
-    fontSize: 13 
+  tab: { 
+    paddingHorizontal: 24, paddingVertical: 8, 
+    borderWidth: borders.medium, borderColor: borders.color, 
+    marginHorizontal: 4, backgroundColor: colors.white,
+    ...shadows.brutalSmall
   },
+  tabActive: { backgroundColor: colors.black },
+  tabText: { fontFamily: typography.family.black, color: colors.black, fontSize: 12 },
   tabTextActive: { color: colors.white },
   
-  storiesWrapper: { paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.glassBorder },
+  storiesWrapper: { 
+    paddingVertical: spacing.md, 
+    borderBottomWidth: borders.medium, 
+    borderBottomColor: borders.color,
+    backgroundColor: colors.white 
+  },
   breezeHeader: { flexDirection: 'row', alignItems: 'center', marginLeft: spacing.lg, marginBottom: 12 },
-  breezeTitle: { 
-    fontFamily: typography.family.black,
-    color: colors.white, 
-    fontSize: 14, 
-    marginLeft: 8, 
-    letterSpacing: 1 
-  },
+  breezeTitle: { fontFamily: typography.family.black, color: colors.black, fontSize: 13, marginLeft: 8 },
   storyContainer: { alignItems: 'center', marginHorizontal: spacing.sm, paddingLeft: spacing.sm },
-  storyGradient: { width: 68, height: 68, borderRadius: 34, padding: 3, justifyContent: 'center', alignItems: 'center' },
-  storyGradientActive: { borderWidth: 2, borderColor: colors.white, borderStyle: 'dashed' },
-  storyInner: { width: 62, height: 62, borderRadius: 31, backgroundColor: colors.bg, justifyContent: 'center', alignItems: 'center', overflow: 'hidden', borderWidth: 2, borderColor: colors.bg },
+  storyFrame: { 
+    width: 72, height: 72, 
+    borderWidth: borders.thick, borderColor: borders.color, 
+    justifyContent: 'center', alignItems: 'center',
+    backgroundColor: colors.white,
+    ...shadows.brutalSmall
+  },
+  storyFrameOwn: { backgroundColor: colors.accentSecondary },
+  storyInner: { width: 60, height: 60, backgroundColor: colors.black, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   storyImg: { width: '100%', height: '100%' },
-  storyInitial: { color: colors.white, fontWeight: 'bold', fontSize: 20 },
-  storyUser: { 
-    fontFamily: typography.family.medium,
-    color: colors.textSecondary, 
-    fontSize: 11, 
-    marginTop: 4, 
-    textAlign: 'center',
-    width: 68
-  },
+  storyInitial: { color: colors.white, fontFamily: typography.family.black, fontSize: 24 },
+  storyUser: { fontFamily: typography.family.black, color: colors.black, fontSize: 9, marginTop: 8, textAlign: 'center', textTransform: 'uppercase' },
   
-  uploadOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, justifyContent: 'center', alignItems: 'center' },
-  uploadText: { fontFamily: typography.family.bold, color: colors.white, marginTop: 16, textAlign: 'center' },
+  uploadOverlay: { 
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100, 
+    justifyContent: 'center', alignItems: 'center', backgroundColor: colors.accent 
+  },
+  uploadText: { fontFamily: typography.family.black, color: colors.black, marginTop: 16 },
 
-  postCard: { marginBottom: spacing.xl },
-  postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md },
+  postCard: { marginBottom: spacing.xl, backgroundColor: colors.white, borderWidth: borders.thick, borderColor: borders.color, margin: spacing.md, ...shadows.brutal },
+  postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: borders.medium, borderColor: borders.color },
   userInfo: { flexDirection: 'row', alignItems: 'center' },
-  postAvatar: { width: 36, height: 36, borderRadius: 18, marginRight: spacing.sm },
-  postUsername: { 
-    fontFamily: typography.family.bold,
-    color: colors.white, 
-    fontSize: 14 
-  },
-  postLocation: { 
-    fontFamily: typography.family.regular,
-    color: colors.textMuted, 
-    fontSize: 11 
-  },
-  mediaWrapper: { width: width, height: width, backgroundColor: colors.bgSurface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.glassBorder },
+  avatarFrame: { width: 44, height: 44, borderWidth: borders.medium, borderColor: borders.color, marginRight: spacing.sm, overflow: 'hidden' },
+  postAvatar: { width: '100%', height: '100%' },
+  postUsername: { fontFamily: typography.family.black, color: colors.black, fontSize: 15, textTransform: 'uppercase' },
+  secureRow: { flexDirection: 'row', alignItems: 'center', marginTop: 1 },
+  secureText: { fontFamily: typography.family.bold, color: colors.textMuted, fontSize: 8, marginLeft: 3 },
+  moreBtn: { width: 36, height: 36, borderWidth: 2, borderColor: borders.color, justifyContent: 'center', alignItems: 'center' },
+  
+  mediaFrame: { width: '100%', aspectRatio: 1, backgroundColor: colors.bgSurface, borderBottomWidth: borders.medium, borderColor: borders.color },
   postMedia: { width: '100%', height: '100%' },
-  actionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md },
+  
+  actionRow: { flexDirection: 'row', padding: spacing.md },
   leftActions: { flexDirection: 'row' },
   actionIcon: { marginRight: spacing.lg },
-  captionArea: { paddingHorizontal: spacing.md },
-  captionText: { 
-    fontFamily: typography.family.regular,
-    color: colors.white, 
-    fontSize: 14, 
-    lineHeight: 18 
-  },
-  captionBold: { fontFamily: typography.family.bold },
-  timeAgo: { 
-    fontFamily: typography.family.black,
-    color: colors.accent, 
-    fontSize: 11, 
-    marginTop: spacing.xs 
-  },
-
-  reelsContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  reelsTitle: { 
-    fontFamily: typography.family.black,
-    color: colors.white, 
-    fontSize: 24, 
-    marginBottom: 8 
-  },
-  reelsText: { 
-    fontFamily: typography.family.medium,
-    color: colors.textSecondary, 
-    textAlign: 'center', 
-    lineHeight: 22, 
-    fontSize: 14 
-  },
-  inviteBtn: { marginTop: 32, backgroundColor: colors.white, paddingHorizontal: 24, paddingVertical: 14, borderRadius: radius.md, ...shadows.brutal, borderWidth: 2, borderColor: colors.black },
-  inviteBtnText: { 
-    fontFamily: typography.family.black,
-    color: colors.black, 
-    fontSize: 15 
-  },
+  
+  captionArea: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
+  captionText: { fontFamily: typography.family.regular, color: colors.black, fontSize: 14, lineHeight: 18 },
+  captionBold: { fontFamily: typography.family.black },
+  timeLabel: { fontFamily: typography.family.black, color: colors.accent, fontSize: 10, marginTop: 8 },
 });
+
