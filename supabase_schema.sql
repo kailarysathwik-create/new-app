@@ -2,6 +2,7 @@
 CREATE TABLE public.profiles (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
   username TEXT UNIQUE NOT NULL,
+  email TEXT, -- Stored to allow username-based login resolution
   bio TEXT,
   avatar_url TEXT,
   is_public BOOLEAN DEFAULT true,

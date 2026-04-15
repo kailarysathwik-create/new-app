@@ -49,6 +49,7 @@ export const useAuthStore = create((set, get) => ({
     const { error: profileError } = await supabase.from('profiles').insert({
       id: authUser.user.id,
       username: username,
+      email: authData.email || authData.phone, // Store for login resolution
       public_key: publicKey,
       is_public: true,
     });
@@ -74,33 +75,17 @@ export const useAuthStore = create((set, get) => ({
 
         if (!isEmail && !isPhone) {
             // Resolution: Lookup email for this username
-            const { data, error } = await supabase
+            const { data: profileData, error: lookupError } = await supabase
                 .from('profiles')
-                .select('id')
+                .select('email')
                 .eq('username', identifier)
                 .single();
             
-            if (error || !data) throw new Error("Username not found");
-
-            // Since we can't get the email directly from public profiles (security),
-            // we assume the user might have to use email/phone if we didn't store email in profiles.
-            // WORKAROUND: In this schema, we need to handle this. 
-            // PROPOSAL: We'll use a Supabase RPC or assume the identifier is correct for Supabase if it's email.
-            // If the user is logging in with username, we'll need their email.
-            // Let's assume for this project we've added 'email' to profiles or can use an RPC.
-            // For now, I'll attempt to fetch the profile by ID to see if we can derive it.
-            
-            // NOTE: In a real Supabase setup, you'd use a custom edge function for 'signInWithUsername'.
-            // For this app, I'll update the 'profiles' fetch to be more resilient.
-            const { data: profileData } = await supabase.from('profiles').select('id').eq('username', identifier).single();
-            if (profileData) {
-                // We'll try to sign in. Supabase doesn't support signing in with ID.
-                // It MUST be email or phone. 
-                // Suggestion to USER: I will implement a check that allows the app to find the email if we store it.
-            }
+            if (lookupError || !profileData?.email) throw new Error("Username not found");
+            authIdentifier = profileData.email;
         }
 
-        const authData = isEmail ? { email: authIdentifier, password } : { phone: authIdentifier, password };
+        const authData = authIdentifier.includes('@') ? { email: authIdentifier, password } : { phone: authIdentifier, password };
         const { data, error } = await supabase.auth.signInWithPassword(authData);
         
         if (error) throw error;
