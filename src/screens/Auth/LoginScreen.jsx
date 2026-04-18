@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Dimensions, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { Image, View, Text, StyleSheet, TouchableOpacity, Dimensions, KeyboardAvoidingView, Platform, Alert, TextInput } from 'react-native';
+import { useRouter } from 'expo-router';
 import { MotiView, MotiText } from 'moti';
-import { Eye, EyeOff, Lock, User, Sparkles } from 'lucide-react-native';
+import { Eye, EyeOff, Lock, User } from 'lucide-react-native';
 import { colors, spacing, radius, typography, shadows, borders } from '../../theme/tokens';
 import { useAuthStore } from '../../store/authStore';
+import { haptics } from '../../utils/haptics';
 
 const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
+  const router = useRouter();
   const { signInManual, loading } = useAuthStore();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -21,8 +23,10 @@ export default function LoginScreen() {
     }
     const { error } = await signInManual({ identifier, password });
     if (error) {
+        haptics.error();
         Alert.alert("Login Error", error.message);
     } else {
+        haptics.success();
         router.replace('/(tabs)');
     }
   };
@@ -45,7 +49,11 @@ export default function LoginScreen() {
               transition={{ type: 'spring', delay: 100 }}
               style={styles.logoFrame}
             >
-                <Sparkles color={colors.black} size={40} />
+                <Image 
+                    source={require('../../../assets/images/SAILY-logo.png')} 
+                    style={styles.logoImage} 
+                    resizeMode="contain"
+                />
             </MotiView>
             <MotiText 
               from={{ opacity: 0 }}
@@ -94,7 +102,7 @@ export default function LoginScreen() {
                 <Text style={styles.loginBtnText}>{loading ? 'CONNECTING...' : 'CONNECT TO SAILY'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.forgotBtn}>
+            <TouchableOpacity style={styles.forgotBtn} onPress={() => router.push('/forgot-password')}>
                 <Text style={styles.forgotText}>FORGOT PASSWORD?</Text>
             </TouchableOpacity>
           </View>
@@ -117,8 +125,8 @@ const styles = StyleSheet.create({
   content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.xl },
   header: { alignItems: 'center', marginBottom: spacing.xxl },
   logoFrame: {
-    width: 90,
-    height: 90,
+    width: 100,
+    height: 100,
     backgroundColor: colors.accent,
     borderWidth: borders.thick,
     borderColor: borders.color,
@@ -126,7 +134,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
     ...shadows.brutal,
+    overflow: 'hidden',
   },
+  logoImage: { width: '80%', height: '80%' },
   appName: { 
     fontFamily: typography.family.black,
     fontSize: 48, 

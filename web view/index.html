@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Saily Web</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <h1 class="brand">SAILY</h1>
+        <nav class="nav-list">
+          <button class="nav-item active">Home</button>
+          <button class="nav-item">Explore</button>
+          <button class="nav-item">Messages</button>
+          <button class="nav-item">Vault</button>
+          <button class="nav-item">Profile</button>
+        </nav>
+        <button class="cta">Create Post</button>
+      </aside>
+
+      <main class="feed-area">
+        <header class="topbar">
+          <input id="searchInput" type="text" placeholder="Search Saily..." />
+          <div class="top-actions">
+            <button>Notifications</button>
+            <button>Settings</button>
+          </div>
+        </header>
+
+        <section id="stories" class="stories"></section>
+        <section id="posts" class="posts"></section>
+      </main>
+
+      <aside class="right-panel">
+        <section class="profile-card">
+          <div class="avatar">SG</div>
+          <div>
+            <p class="username">@saily_gopi</p>
+            <p class="muted">Sailing safely across nodes</p>
+          </div>
+        </section>
+
+        <section class="suggestions">
+          <h2>Suggested for you</h2>
+          <ul id="suggestedUsers"></ul>
+        </section>
+      </aside>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

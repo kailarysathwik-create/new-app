@@ -15,7 +15,17 @@ export default function Index() {
     );
   }
 
-  if (!session) return <Redirect href="/login" />;
-  if (!profile) return <Redirect href="/setup-username" />;
-  return <Redirect href="/(tabs)" />;
+  // LOGIC:
+  // 1. Authenticated & Profile exists -> Goto App Home
+  if (session && profile) {
+    return <Redirect href="/(tabs)" />;
+  }
+
+  // 2. No Session -> Goto Login (Main Entry)
+  if (!session) {
+    return <Redirect href="/login" />;
+  }
+
+  // 3. Session exists but no Profile -> Goto Setup
+  return <Redirect href="/setup-username" />;
 }

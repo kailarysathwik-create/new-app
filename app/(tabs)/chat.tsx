@@ -1,2 +1,10 @@
 import ChatListScreen from '../../src/screens/Chat/ChatListScreen';
-export default ChatListScreen;
+import TabSwipeShell from '../../src/components/ui/TabSwipeShell';
+
+export default function ChatRoute() {
+  return (
+    <TabSwipeShell routeName="chat">
+      <ChatListScreen />
+    </TabSwipeShell>
+  );
+}

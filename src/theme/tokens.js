@@ -46,6 +46,13 @@ export const typography = {
     xxl: 32,
     huge: 48,
   },
+  weight: {
+    regular: '400',
+    medium: '500',
+    semibold: '600',
+    bold: '700',
+    black: '900',
+  },
 };
 
 export const spacing = {
@@ -65,28 +72,19 @@ export const radius = {
   full: 9999,
 };
 
-// Neo-Brutalist Shadows & Borders
+// Neo-Brutalist Shadows (Hard-edged, no blur)
 export const shadows = {
   brutal: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
+    boxShadow: '6px 6px 0px 0px #000000',
   },
   brutalSmall: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 4,
+    boxShadow: '4px 4px 0px 0px #000000',
   },
   brutalOrange: {
-    shadowColor: '#FF5C00',
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 5,
+    boxShadow: '5px 5px 0px 0px #FF5C00',
+  },
+  glass: {
+    boxShadow: '8px 8px 0px 0px rgba(0, 0, 0, 0.25)',
   }
 };
 

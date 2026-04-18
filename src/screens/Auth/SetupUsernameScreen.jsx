@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { colors, spacing, radius, typography } from '../../theme/tokens';
 import { useAuthStore } from '../../store/authStore';
 
 export default function SetupUsernameScreen() {
+  const router = useRouter();
   const { publicKey } = useLocalSearchParams();
   const [username, setUsername] = useState('');
   const [bio, setBio] = useState('');
@@ -43,11 +44,6 @@ export default function SetupUsernameScreen() {
       <Text style={styles.charCount}>{bio.length}/150</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <View style={styles.keyBadge}>
-        <Text style={styles.keyBadgeIcon}>🔑</Text>
-        <Text style={styles.keyBadgeText}>Your encryption keys are generated and stored securely on this device.</Text>
-      </View>
 
       <TouchableOpacity style={styles.btn} onPress={handleCreate} disabled={loading}>
         {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Enter the App →</Text>}

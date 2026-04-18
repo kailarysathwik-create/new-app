@@ -1,0 +1,42 @@
+diff --git a/node_modules/react-native-reanimated/Common/cpp/reanimated/CSS/interpolation/transforms/TransformOperationInterpolator.cpp b/node_modules/react-native-reanimated/Common/cpp/reanimated/CSS/interpolation/transforms/TransformOperationInterpolator.cpp
+index 19a89ab..2688bfe 100644
+--- a/node_modules/react-native-reanimated/Common/cpp/reanimated/CSS/interpolation/transforms/TransformOperationInterpolator.cpp
++++ b/node_modules/react-native-reanimated/Common/cpp/reanimated/CSS/interpolation/transforms/TransformOperationInterpolator.cpp
+@@ -142,13 +142,15 @@ template TransformMatrix3D TransformOperationInterpolator<MatrixOperation>::inte
+     const TransformMatrix::Shared &) const;
+ 
+ // Specialization for resolvable operations
+-template <ResolvableOp TOperation>
++template <typename TOperation>
++requires ResolvableOp<TOperation>
+ TransformOperationInterpolator<TOperation>::TransformOperationInterpolator(
+     const std::shared_ptr<TOperation> &defaultOperation,
+     ResolvableValueInterpolatorConfig config)
+     : StyleOperationInterpolator(defaultOperation), config_(std::move(config)) {}
+ 
+-template <ResolvableOp TOperation>
++template <typename TOperation>
++requires ResolvableOp<TOperation>
+ std::unique_ptr<StyleOperation> TransformOperationInterpolator<TOperation>::interpolate(
+     double progress,
+     const std::shared_ptr<StyleOperation> &from,
+@@ -161,7 +163,8 @@ std::unique_ptr<StyleOperation> TransformOperationInterpolator<TOperation>::inte
+       fromOp.value.interpolate(progress, toOp.value, getResolvableValueContext(context)));
+ }
+ 
+-template <ResolvableOp TOperation>
++template <typename TOperation>
++requires ResolvableOp<TOperation>
+ std::shared_ptr<StyleOperation> TransformOperationInterpolator<TOperation>::resolveOperation(
+     const std::shared_ptr<StyleOperation> &operation,
+     const StyleOperationsInterpolationContext &context) const {
+@@ -177,7 +180,8 @@ std::shared_ptr<StyleOperation> TransformOperationInterpolator<TOperation>::reso
+   return std::make_shared<TOperation>(resolved.value());
+ }
+ 
+-template <ResolvableOp TOperation>
++template <typename TOperation>
++requires ResolvableOp<TOperation>
+ ResolvableValueInterpolationContext TransformOperationInterpolator<TOperation>::getResolvableValueContext(
+     const StyleOperationsInterpolationContext &context) const {
+   return ResolvableValueInterpolationContext{

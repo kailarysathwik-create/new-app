@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAILY | Private Social Sailing</title>
+    <meta name="description" content="Saily: The next-generation privacy-focused social network. Port your world, anchor your memories, and sail privately.">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <!-- Icons (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="grid-background"></div>
+
+    <!-- Floating UI Elements -->
+    <div class="floating-elements">
+        <img src="assets/home.png" class="float-item float-1" data-parallax="0.1" alt="">
+        <img src="assets/explore.png" class="float-item float-2" data-parallax="0.2" alt="">
+        <img src="assets/radar.png" class="float-item float-3" data-parallax="0.15" alt="">
+        <img src="assets/vault.png" class="float-item float-4" data-parallax="0.25" alt="">
+    </div>
+
+    <header class="navbar">
+        <div class="logo">
+            <img src="assets/logo.png" alt="Saily Logo" class="logo-img">
+            <h1>SAILY</h1>
+        </div>
+        <nav>
+            <div class="nav-links">
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#about" class="nav-link">How it works</a>
+            </div>
+            <a href="#download" class="cta-pill">Get the App</a>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content" data-reveal="up">
+                <div class="eyebrow">PORT YOUR WORLD</div>
+                <h2 class="hero-title">PRIVATE SOCIAL <span class="accent-text">SAILING</span></h2>
+                <p class="hero-subtitle">Anchor your Instagram history, cast your moments as breezes, and connect via zero-knowledge nodes. Pure privacy, no compromises.</p>
+                <div class="hero-btns">
+                    <a href="#download" class="btn-primary">START SAILING</a>
+                    <a href="#features" class="btn-secondary">EXPLORE DEEP</a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Showcase Section (Sticky Phone) -->
+        <section class="showcase" id="about">
+            <div class="showcase-inner">
+                <div class="sticky-phone-wrap">
+                    <div class="glass-phone showcase-phone">
+                        <div class="phone-screen">
+                            <div class="screenshot-strip" id="screenStrip">
+                                <img src="assets/home.png" alt="Home Feed" class="screen-img">
+                                <img src="assets/explore.png" alt="Explore" class="screen-img">
+                                <img src="assets/radar.png" alt="Radar" class="screen-img">
+                                <img src="assets/vault.png" alt="Vault" class="screen-img">
+                                <img src="assets/profile.png" alt="Profile" class="screen-img">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="features-scroll">
+                    <div class="feature-block active" data-index="0">
+                        <div class="eyebrow">HOME FEED</div>
+                        <h2>Your Private Harbour</h2>
+                        <p>A clean, zero-tracking feed where your memories are anchored securely. Connect with mutuals in a space designed for trust.</p>
+                    </div>
+                    <div class="feature-block" data-index="1">
+                        <div class="eyebrow">EXPLORE</div>
+                        <h2>Deep Sea Discovery</h2>
+                        <p>Discover new nodes and public anchors across the network. Personalized discovery without the invasive algorithms.</p>
+                    </div>
+                    <div class="feature-block" data-index="2">
+                        <div class="eyebrow">RADAR</div>
+                        <h2>Real-time Signals</h2>
+                        <p>Catch signals from nearby nodes. See what's trending in your local harbour without compromising your GPS location.</p>
+                    </div>
+                    <div class="feature-block" data-index="3">
+                        <div class="eyebrow">VAULT</div>
+                        <h2>Double Encryption</h2>
+                        <p>Your most precious anchors live here. Locked behind a master password and encrypted with your private key.</p>
+                    </div>
+                    <div class="feature-block" data-index="4">
+                        <div class="eyebrow">PROFILE</div>
+                        <h2>Global Anchor</h2>
+                        <p>Manage your public identity and private storage nodes. Your home base in the decentralized social seas.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="features">
+            <div class="section-header" data-reveal="up">
+                <h3 class="section-title">BUILT DIFFERENT</h3>
+            </div>
+            <div class="bento-grid">
+                <div class="bento-item glass-card" data-reveal="left">
+                    <i data-lucide="shield-check" class="icon-orange"></i>
+                    <h4>Zero-Knowledge</h4>
+                    <p>Your data is encrypted locally and stored across decentralized Cloud Nodes. Not even we can see it.</p>
+                </div>
+                <div class="bento-item glass-card" data-reveal="up">
+                    <i data-lucide="package" class="icon-orange"></i>
+                    <h4>Port History</h4>
+                    <p>Easily import your Instagram ZIP export to bring over your history, likes, and followers without the tracking.</p>
+                </div>
+                <div class="bento-item glass-card" data-reveal="right">
+                    <i data-lucide="wind" class="icon-orange"></i>
+                    <h4>Active Breezes</h4>
+                    <p>Share ephemeral moments that disappear after 24 hours. No footprints, just memories.</p>
+                </div>
+                <div class="bento-item glass-card full-width" data-reveal="up">
+                    <div class="bento-content">
+                        <i data-lucide="anchor" class="icon-orange"></i>
+                        <h4>Anchored Memories</h4>
+                        <p>Stable, encrypted posts that stay in your private vault until you choose to share them with mutuals.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Download Section -->
+        <section id="download" class="download-section">
+            <div class="download-container" data-reveal="up">
+                <h3 class="download-title">READY TO WEIGH ANCHOR?</h3>
+                <p class="download-text">Skip the app stores. Download SAILY directly and take control of your privacy.</p>
+                <div class="download-btns">
+                    <a href="downloads/saily_android.apk" class="download-pill" download>
+                        <i data-lucide="android"></i>
+                        <div class="pill-text">
+                            <span>Direct Download</span>
+                            <strong>ANDROID (APK)</strong>
+                        </div>
+                    </a>
+                    <a href="downloads/saily_ios.ipa" class="download-pill pill-white" download>
+                        <i data-lucide="apple"></i>
+                        <div class="pill-text">
+                            <span>Direct Download</span>
+                            <strong>iOS (IPA)</strong>
+                        </div>
+                    </a>
+                </div>
+                <p class="download-instruction">Note: You may need to "Allow installation from unknown sources" in your device settings.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2026 SAILY by KPN Studios</p>
+            <a href="https://www.instagram.com/saily_2026/" class="instagram-link" target="_blank">
+                <i data-lucide="instagram"></i>
+                FOLLOW ON INSTAGRAM
+            </a>
+        </div>
+    </footer>
+
+    <script src="main.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

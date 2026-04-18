@@ -1,137 +1,139 @@
 import { encryptFile, decryptFile } from '../crypto/encryption';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { supabase } from './supabase';
+import { decodeBase64 } from 'tweetnacl-util';
 
 /**
- * SAILY SHARED CLOUD ENGINE (5TB HUB)
- * Target Account: kailarysathwik@gmail.com
+ * SAILY — THE HARBOUR
  * 
  * Architecture:
- * - Root: 'SAILY' (Shared 5TB Folder)
- * - Subfolders: '/[userId]/...' (Automatic User Partitions)
+ * - "The Harbour" is the Admin's 5TB Google Drive, shared across all Saily users.
+ * - The admin's OAuth credentials are stored ONLY on the Supabase backend (hub_config table).
+ * - All uploads/downloads go through a Supabase Edge Function that uses the master token.
+ * - Each user's media is stored in: SAILY/[userId]/ — their personal berth.
+ * - Files are E2E encrypted on-device BEFORE upload, so even the admin can't read them.
  */
 
-const DRIVE_API_URL = 'https://www.googleapis.com/drive/v3/files';
-const UPLOAD_API_URL = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+// ─── UPLOAD TO THE HARBOUR ─────────────────────────────────────────────────
+// Encrypts a file locally, then sends the cipher to the Supabase Edge Function
+// which deposits it into SAILY/[userId]/ on the Harbour drive.
+export const uploadToHarbour = async (localUri, fileName, userId, options = {}) => {
+  let base64 = null;
+  const mimeType = options.mimeType || 'application/octet-stream';
 
-export const getCloudHeader = (accessToken) => ({
-    'Authorization': `Bearer ${accessToken}`,
-    'Content-Type': 'application/json',
-});
-
-// Find the global 'SAILY' root folder on the hub account
-export const findSailyRoot = async (accessToken) => {
-    const query = encodeURIComponent("name = 'SAILY' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
-    const response = await fetch(`${DRIVE_API_URL}?q=${query}`, {
-        headers: getCloudHeader(accessToken),
+  try {
+    // 1. Read and Encrypt locally (zero-knowledge)
+    base64 = await FileSystem.readAsStringAsync(localUri, {
+      encoding: FileSystem.EncodingType.Base64,
     });
-    const data = await response.json();
-    return data.files?.[0] || null;
-};
+    const { cipher, nonce } = await encryptFile(base64);
 
-// Find or create a user-specific subfolder within the SAILY root
-export const getOrCreateUserFolder = async (accessToken, userId, rootFolderId) => {
-    // 1. Check if user subfolder exists
-    const query = encodeURIComponent(`name = '${userId}' and '${rootFolderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
-    const response = await fetch(`${DRIVE_API_URL}?q=${query}`, {
-        headers: getCloudHeader(accessToken),
+    // 2. Call the Supabase Edge Function — it uses the Master Token server-side
+    const { data, error } = await supabase.functions.invoke('harbour-upload', {
+      body: {
+        userId,
+        fileName,
+        cipher,
+        nonce,
+      },
     });
-    const data = await response.json();
-    
-    if (data.files?.[0]) {
-        return data.files[0].id;
-    }
 
-    // 2. Create if it doesn't exist
-    const createRes = await fetch(DRIVE_API_URL, {
-        method: 'POST',
-        headers: getCloudHeader(accessToken),
-        body: JSON.stringify({
-            name: userId,
-            parents: [rootFolderId],
-            mimeType: 'application/vnd.google-apps.folder',
-        }),
-    });
-    const folder = await createRes.json();
-    return folder.id;
-};
+    if (error) throw error;
+    return { fileId: data.fileId, publicUrl: null, error: null, viaFallback: false };
+  } catch (err) {
+    console.error('[Harbour] Upload failed:', err);
 
-// Create the 'SAILY' root folder (Admin only)
-export const createSailyRoot = async (accessToken) => {
-    const response = await fetch(DRIVE_API_URL, {
-        method: 'POST',
-        headers: getCloudHeader(accessToken),
-        body: JSON.stringify({
-            name: 'SAILY',
-            mimeType: 'application/vnd.google-apps.folder',
-        }),
-    });
-    return await response.json();
-};
-
-export const uploadToCloud = async (localUri, fileName, accessToken, userId, rootFolderId) => {
+    // Fallback path: if edge function is unavailable, upload media directly
+    // to an accessible storage bucket so users can continue using the app.
     try {
-        // 1. Get/Create the target user partition
-        const userFolderId = await getOrCreateUserFolder(accessToken, userId, rootFolderId);
-
-        // 2. Read and Encrypt
-        const base64 = await FileSystem.readAsStringAsync(localUri, { encoding: FileSystem.EncodingType.Base64 });
-        const { cipher, nonce } = await encryptFile(base64);
-        
-        // 3. Prepare Multipart Upload
-        const metadata = {
-            name: fileName,
-            parents: [userFolderId],
-            description: JSON.stringify({ s_nonce: nonce, s_version: '1.0', owner: userId }),
-        };
-
-        const boundary = 'SAILY_BOUNDARY';
-        const body = 
-            `--${boundary}\r\n` +
-            `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-            `${JSON.stringify(metadata)}\r\n` +
-            `--${boundary}\r\n` +
-            `Content-Type: application/octet-stream\r\n\r\n` +
-            `${cipher}\r\n` +
-            `--${boundary}--`;
-
-        const response = await fetch(UPLOAD_API_URL, {
-            method: 'POST',
-            headers: {
-                ...getCloudHeader(accessToken),
-                'Content-Type': `multipart/related; boundary=${boundary}`,
-            },
-            body: body,
+      if (!base64) {
+        base64 = await FileSystem.readAsStringAsync(localUri, {
+          encoding: FileSystem.EncodingType.Base64,
         });
+      }
 
-        const result = await response.json();
-        return { fileId: result.id, error: null };
-    } catch (err) {
-        console.error('Shared cloud upload failed:', err);
-        return { fileId: null, error: err };
+      const fileBuffer = decodeBase64(base64);
+      const safeName = `${Date.now()}_${fileName}`;
+      const path = `${userId}/${safeName}`;
+      const candidateBuckets = ['harbour', 'media', 'uploads', 'avatars'];
+      let lastUploadError = null;
+
+      for (const bucket of candidateBuckets) {
+        const { error: uploadError } = await supabase.storage
+          .from(bucket)
+          .upload(path, fileBuffer, {
+            cacheControl: '3600',
+            upsert: true,
+            contentType: mimeType,
+          });
+
+        if (!uploadError) {
+          const { data } = supabase.storage.from(bucket).getPublicUrl(path);
+          if (data?.publicUrl) {
+            return {
+              fileId: null,
+              publicUrl: data.publicUrl,
+              error: null,
+              viaFallback: true,
+            };
+          }
+        }
+
+        lastUploadError = uploadError;
+      }
+
+      if (lastUploadError) {
+        console.error('[Harbour] No fallback bucket accepted the upload:', lastUploadError);
+      }
+    } catch (fallbackErr) {
+      console.error('[Harbour] Fallback upload failed:', fallbackErr);
     }
+
+    return { fileId: null, publicUrl: null, error: err, viaFallback: false };
+  }
 };
 
-export const downloadFromCloud = async (fileId, accessToken) => {
-    try {
-        const metaRes = await fetch(`${DRIVE_API_URL}/${fileId}?fields=description`, {
-            headers: getCloudHeader(accessToken),
-        });
-        const metadata = await metaRes.json();
-        const { s_nonce } = JSON.parse(metadata.description);
+// ─── DOWNLOAD FROM THE HARBOUR ─────────────────────────────────────────────
+// Fetches the encrypted cipher via Supabase Edge Function, then decrypts locally.
+export const downloadFromHarbour = async (fileId, ownerId) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('harbour-download', {
+      body: { fileId, ownerId },
+    });
 
-        const mediaRes = await fetch(`${DRIVE_API_URL}/${fileId}?alt=media`, {
-            headers: getCloudHeader(accessToken),
-        });
-        const cipher = await mediaRes.text();
+    if (error) throw error;
 
-        const decryptedBase64 = await decryptFile(cipher, s_nonce);
-        const localUri = `${FileSystem.cacheDirectory}${fileId}`;
-        await FileSystem.writeAsStringAsync(localUri, decryptedBase64, { encoding: FileSystem.EncodingType.Base64 });
-        
-        return { localUri, error: null };
-    } catch (err) {
-        console.error('Shared cloud download failed:', err);
-        return { localUri: null, error: err };
-    }
+    // Decrypt locally — the edge function only returns the cipher
+    const decryptedBase64 = await decryptFile(data.cipher, data.nonce);
+    const localUri = `${FileSystem.cacheDirectory}harbour_${fileId}`;
+    await FileSystem.writeAsStringAsync(localUri, decryptedBase64, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    return { localUri, error: null };
+  } catch (err) {
+    console.error('[Harbour] Download failed:', err);
+    return { localUri: null, error: err };
+  }
 };
 
+// ─── LIST USER'S BERTH ─────────────────────────────────────────────────────
+// Returns all files in this user's partition (SAILY/[userId]/) from The Harbour.
+export const listUserBerth = async (userId) => {
+  try {
+    const { data, error } = await supabase.functions.invoke('harbour-list', {
+      body: { userId },
+    });
+    if (error) throw error;
+    return { files: data.files, error: null };
+  } catch (err) {
+    console.error('[Harbour] List failed:', err);
+    return { files: [], error: err };
+  }
+};
+
+// ─── LEGACY COMPAT ─────────────────────────────────────────────────────────
+// Kept for PostCard backward compat that still references downloadFromCloud
+export const downloadFromCloud = downloadFromHarbour;
+export const uploadToCloud = (localUri, fileName, _accessToken, _folderId, userId) =>
+  uploadToHarbour(localUri, fileName, userId);

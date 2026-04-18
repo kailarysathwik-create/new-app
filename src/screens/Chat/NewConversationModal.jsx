@@ -1,16 +1,22 @@
-import React, { useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, TextInput, FlatList,
-  TouchableOpacity, ActivityIndicator, Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Search, X, MessageSquarePlus, ShieldCheck } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { MessageSquarePlus, Search, ShieldCheck, X } from 'lucide-react-native';
 import { MotiView } from 'moti';
-import { colors, spacing, radius, typography, shadows } from '../../theme/tokens';
+import { useCallback, useState } from 'react';
+import {
+  ActivityIndicator, Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
+import { colors, radius, shadows, spacing, typography } from '../../theme/tokens';
+import { haptics } from '../../utils/haptics';
 
 function UserResult({ user, onPress }) {
   return (
@@ -71,6 +77,7 @@ export default function NewConversationModal() {
 
   const startConversation = async (otherUser) => {
     if (starting) return;
+    haptics.medium();
     setStarting(true);
     try {
       // Check if a conversation already exists between these two users
@@ -161,12 +168,12 @@ export default function NewConversationModal() {
         ListEmptyComponent={
           query.length >= 2 && !loading ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No users found for "{query}"</Text>
+              <Text style={styles.emptyText}>No users found for &quot;{query}&quot;</Text>
             </View>
           ) : (
             <View style={styles.emptyState}>
               <MessageSquarePlus color={colors.textMuted} size={40} style={{ marginBottom: 12 }} />
-              <Text style={styles.emptyText}>Type a username to start a secure channel</Text>
+              <Text style={styles.emptyText}>Type a username to start sailing</Text>
             </View>
           )
         }
@@ -175,7 +182,7 @@ export default function NewConversationModal() {
       {starting && (
         <BlurView intensity={40} tint="dark" style={styles.loadingOverlay}>
           <ActivityIndicator color={colors.accent} size="large" />
-          <Text style={styles.loadingText}>Establishing Secure Channel...</Text>
+          <Text style={styles.loadingText}>Establishing ship...</Text>
         </BlurView>
       )}
     </View>

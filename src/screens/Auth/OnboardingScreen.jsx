@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Alert, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { MotiView, AnimatePresence } from 'moti';
 import * as DocumentPicker from 'expo-document-picker';
-import { unzip } from 'react-native-zip-archive';
-import * as FileSystem from 'expo-file-system';
-import { router } from 'expo-router';
+import * as FileSystem from 'expo-file-system/legacy';
+import { useRouter } from 'expo-router';
 import { Shield, Sparkles, User, Lock, Phone, Mail, CheckCircle, Package, ArrowRight, ArrowLeft } from 'lucide-react-native';
 import { colors, spacing, radius, typography, shadows, borders } from '../../theme/tokens';
 import { useAuthStore } from '../../store/authStore';
+import { haptics } from '../../utils/haptics';
 
 const { width } = Dimensions.get('window');
 
 export default function OnboardingScreen() {
-  const [step, setStep] = useState(1); // 1: IG Import, 2: Identity (Username/Password), 3: Contact
+  const router = useRouter();
+  const [step, setStep] = useState(1); // 1: IG Import, 2: Account Details (Email + Username), 3: Security (Password)
   const [loading, setLoading] = useState(false);
   
   // Step 1: IG Data
@@ -26,23 +27,36 @@ export default function OnboardingScreen() {
 
   // Step 2: Identity
   const [username, setUsername] = useState('');
+  
+  // Step 3: Contact & Verification
+  const [contact, setContact] = useState('');
+  const [isEmail, setIsEmail] = useState(true);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [phoneVerified, setPhoneVerified] = useState(false);
+
+  // Step 3: Password
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Step 3: Contact
-  const [contact, setContact] = useState('');
-  const [isEmail, setIsEmail] = useState(true);
-
-  const { signUpManual } = useAuthStore();
+  const { signUpManual, requestOTP, verifyOTP, updatePassword } = useAuthStore();
 
   const pickZip = async () => {
     try {
+      if (Platform.OS === 'web') {
+        Alert.alert(
+          'Not available on web',
+          'Instagram ZIP import is currently supported on mobile only. You can continue with manual onboarding.'
+        );
+        return;
+      }
       setLoading(true);
       const res = await DocumentPicker.getDocumentAsync({ type: 'application/zip' });
       if (res.canceled) return;
 
       const zipPath = res.assets[0].uri;
       const targetPath = `${FileSystem.cacheDirectory}unzipped_ig/`;
+      const { unzip } = await import('react-native-zip-archive');
       
       await unzip(zipPath, targetPath);
       
@@ -67,36 +81,87 @@ export default function OnboardingScreen() {
   };
 
   const handleNextStep = () => {
+    haptics.light();
     if (step === 2) {
       if (!username) {
         Alert.alert("Error", "Username is required");
         return;
       }
-      if (password !== confirmPassword) {
-        Alert.alert("Error", "Passwords do not match");
+      if (!contact) {
+        Alert.alert("Error", "Contact method is required");
         return;
       }
-      if (password.length < 6) {
-        Alert.alert("Error", "Password must be at least 6 characters");
+      if (!isEmail && !phoneVerified) {
+        Alert.alert("Error", "Please verify your mobile number first.");
         return;
       }
     }
     setStep(step + 1);
   };
 
-  const handleFinish = async () => {
-    if (!contact) {
-      Alert.alert("Error", "Please provide a contact method.");
-      return;
-    }
+  /* 
+  const handleSendOTP = async () => {
+    if (!contact) return;
     setLoading(true);
-    const { error } = await signUpManual({ identifier: contact, password, username });
+    const { error } = await requestOTP(contact);
     if (error) {
-      Alert.alert("Registration Error", error.message);
+        Alert.alert("Error", error.message);
     } else {
-      router.replace('/(tabs)');
+        setOtpSent(true);
+        Alert.alert("OTP Sent", "A verification code has been sent via SMS.");
     }
     setLoading(false);
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otpCode) return;
+    setLoading(true);
+    const { error } = await verifyOTP(contact, otpCode);
+    if (error) {
+        Alert.alert("Verification Failed", error.message);
+    } else {
+        setPhoneVerified(true);
+        Alert.alert("Verified", "Your mobile number has been verified.");
+    }
+    setLoading(false);
+  };
+  */
+
+  const handleFinish = async () => {
+    if (!password) {
+        Alert.alert("Error", "Password is required");
+        return;
+    }
+    if (password !== confirmPassword) {
+        Alert.alert("Error", "Passwords do not match");
+        return;
+    }
+    if (password.length < 6) {
+        Alert.alert("Error", "Password must be at least 6 characters");
+        return;
+    }
+
+    setLoading(true);
+    try {
+        if (isEmail) {
+            const { error } = await signUpManual({ identifier: contact, password, username });
+            if (error) throw error;
+        } else {
+            // Mobile (commented out but logic explained):
+            // 1. verifyOTP creates session
+            // 2. updatePassword sets password
+            // 3. Trigger handles profile
+            const { error: passError } = await updatePassword(password);
+            if (passError) throw passError;
+        }
+        haptics.success();
+        router.replace('/(tabs)');
+    } catch (error) {
+        haptics.error();
+        Alert.alert("Registration Error", error.message);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const renderStep1 = () => (
@@ -175,26 +240,65 @@ export default function OnboardingScreen() {
 
   const renderStep2 = () => (
     <MotiView 
-      from={{ opacity: 0, translateX: 50 }}
-      animate={{ opacity: 1, translateX: 0 }}
-      exit={{ opacity: 0, translateX: -50 }}
+      from={{ opacity: 0, translateY: 20 }}
+      animate={{ opacity: 1, translateY: 0 }}
       style={styles.stepContainer}
     >
       <View style={styles.header}>
-        <Shield color={colors.accent} size={64} />
-        <Text style={styles.title}>IDENTITY</Text>
-        <Text style={styles.subtitle}>Set your Saily ID and your master password.</Text>
+        <User color={colors.accent} size={64} />
+        <Text style={styles.title}>ACCOUNT</Text>
+        <Text style={styles.subtitle}>Set your Saily ID and contact details.</Text>
+      </View>
+
+      <View style={styles.tabHeader}>
+        <TouchableOpacity style={[styles.tab, isEmail && styles.tabActive]} onPress={() => setIsEmail(true)}>
+          <Text style={[styles.tabLabel, isEmail && styles.tabLabelActive]}>EMAIL</Text>
+        </TouchableOpacity>
+        {/* Mobile hidden for now */}
       </View>
 
       <View style={styles.brutalCard}>
+        <Text style={styles.inputLabel}>{isEmail ? 'EMAIL ADDRESS' : 'MOBILE NUMBER'}</Text>
+        <TextInput 
+          style={styles.input} 
+          placeholder={isEmail ? "name@server.com" : "+1 ..."} 
+          placeholderTextColor={colors.textMuted} 
+          value={contact} onChangeText={setContact}
+          keyboardType={isEmail ? 'email-address' : 'phone-pad'}
+          editable={!phoneVerified}
+          autoCapitalize="none"
+        />
+
         <Text style={styles.inputLabel}>SAILY ID (USERNAME)</Text>
         <TextInput 
           style={styles.input} 
           placeholder="e.g. sailor_x" 
           placeholderTextColor={colors.textMuted}
           value={username} onChangeText={setUsername}
+          autoCapitalize="none"
         />
 
+        <TouchableOpacity style={styles.nextBtn} onPress={handleNextStep}>
+            <Text style={styles.nextBtnText}>CONTINUE</Text>
+            <ArrowRight color={colors.black} size={22} />
+        </TouchableOpacity>
+      </View>
+    </MotiView>
+  );
+
+  const renderStep3 = () => (
+    <MotiView 
+      from={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      style={styles.stepContainer}
+    >
+      <View style={styles.header}>
+        <Lock color={colors.accent} size={64} />
+        <Text style={styles.title}>SECURITY</Text>
+        <Text style={styles.subtitle}>Set your master password to protect your vault.</Text>
+      </View>
+
+      <View style={styles.brutalCard}>
         <Text style={styles.inputLabel}>MASTER PASSWORD</Text>
         <TextInput 
           style={styles.input} 
@@ -211,45 +315,6 @@ export default function OnboardingScreen() {
           placeholderTextColor={colors.textMuted} 
           secureTextEntry 
           value={confirmPassword} onChangeText={setConfirmPassword}
-        />
-
-        <TouchableOpacity style={styles.nextBtn} onPress={handleNextStep}>
-            <Text style={styles.nextBtnText}>VERIFY IDENTITY</Text>
-            <ArrowRight color={colors.black} size={22} />
-        </TouchableOpacity>
-      </View>
-    </MotiView>
-  );
-
-  const renderStep3 = () => (
-    <MotiView 
-      from={{ opacity: 0, translateY: 20 }}
-      animate={{ opacity: 1, translateY: 0 }}
-      style={styles.stepContainer}
-    >
-      <View style={styles.header}>
-        <Phone color={colors.accent} size={64} />
-        <Text style={styles.title}>CONNECTION</Text>
-        <Text style={styles.subtitle}>Add your mobile or email for recovery.</Text>
-      </View>
-
-      <View style={styles.tabHeader}>
-        <TouchableOpacity style={[styles.tab, isEmail && styles.tabActive]} onPress={() => setIsEmail(true)}>
-          <Text style={[styles.tabLabel, isEmail && styles.tabLabelActive]}>EMAIL</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.tab, !isEmail && styles.tabActive]} onPress={() => setIsEmail(false)}>
-          <Text style={[styles.tabLabel, !isEmail && styles.tabLabelActive]}>MOBILE</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.brutalCard}>
-        <Text style={styles.inputLabel}>{isEmail ? 'EMAIL ADDRESS' : 'MOBILE NUMBER'}</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder={isEmail ? "name@server.com" : "+1 ..."} 
-          placeholderTextColor={colors.textMuted} 
-          value={contact} onChangeText={setContact}
-          keyboardType={isEmail ? 'email-address' : 'phone-pad'}
         />
 
         <TouchableOpacity style={styles.finishBtn} onPress={handleFinish} disabled={loading}>
@@ -276,7 +341,7 @@ export default function OnboardingScreen() {
       </ScrollView>
 
       {step > 1 && (
-        <TouchableOpacity style={styles.backBtn} onPress={() => setStep(step - 1)}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => { haptics.light(); setStep(step - 1); }}>
             <ArrowLeft color={colors.white} size={24} />
         </TouchableOpacity>
       )}
@@ -386,6 +451,15 @@ const styles = StyleSheet.create({
     ...shadows.brutalSmall
   },
   finishBtnText: { fontFamily: typography.family.black, color: colors.black, fontSize: 18 },
+  
+  secondaryBtn: { 
+    backgroundColor: colors.white, 
+    paddingVertical: 12, marginTop: spacing.sm, 
+    alignItems: 'center', 
+    borderWidth: 2, borderColor: colors.black,
+    ...shadows.brutalSmall
+  },
+  secondaryBtnText: { fontFamily: typography.family.black, color: colors.black, fontSize: 13 },
   
   backBtn: { 
     position: 'absolute', top: 56, left: spacing.xl, 

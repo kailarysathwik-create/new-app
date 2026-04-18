@@ -22,8 +22,11 @@ export default function RootLayout() {
 
   useEffect(() => {
     // Initial Session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
+      if (session?.user) {
+        await fetchProfile(session.user.id);
+      }
     });
 
     // Listen for Auth Changes
