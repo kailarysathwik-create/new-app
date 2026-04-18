@@ -1,5 +1,4 @@
 diff --git a/node_modules/react-native-zip-archive/android/src/main/java/com/rnziparchive/RNZipArchiveModule.java b/node_modules/react-native-zip-archive/android/src/main/java/com/rnziparchive/RNZipArchiveModule.java
-index 14bd68f..cccbd99 100644
 --- a/node_modules/react-native-zip-archive/android/src/main/java/com/rnziparchive/RNZipArchiveModule.java
 +++ b/node_modules/react-native-zip-archive/android/src/main/java/com/rnziparchive/RNZipArchiveModule.java
 @@ -470,7 +470,7 @@ public class RNZipArchiveModule extends ReactContextBaseJavaModule {
