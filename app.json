@@ -7,7 +7,6 @@
     "icon": "./assets/images/sail.png",
     "scheme": "newapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -19,7 +18,6 @@
         "backgroundImage": "./assets/images/sail.png",
         "monochromeImage": "./assets/images/sail.png"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": true
     },
     "web": {

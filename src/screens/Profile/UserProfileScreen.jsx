@@ -118,7 +118,7 @@ export default function UserProfileScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.profileSection}>
             <LinearGradient colors={[colors.accent, colors.accentSecondary]} style={styles.avatarBorder}>
-                <Image source={profile.avatar_url ? { uri: profile.avatar_url } : require('../../../assets/images/default-avatar.png')} style={styles.avatar} />
+                <Image source={profile.avatar_url ? { uri: profile.avatar_url } : require('../../../assets/images/defaultavatar.png')} style={styles.avatar} />
             </LinearGradient>
             <Text style={styles.username}>@{profile.username}</Text>
             <Text style={styles.bio}>{profile.bio || "Sailing the private web with Saily."}</Text>

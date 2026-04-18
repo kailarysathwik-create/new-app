@@ -87,7 +87,7 @@ export default function RadarScreen() {
       <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
       <View style={styles.signalInner}>
         <Image 
-            source={item.actor.avatar_url ? { uri: item.actor.avatar_url } : require('../../../assets/images/default-avatar.png')} 
+            source={item.actor.avatar_url ? { uri: item.actor.avatar_url } : require('../../../assets/images/defaultavatar.png')} 
             style={styles.avatar} 
         />
         <View style={styles.signalContent}>
