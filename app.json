@@ -13,25 +13,37 @@
     "android": {
       "package": "com.newapp.privacy",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/sail.png",
-        "backgroundImage": "./assets/images/sail.png",
-        "monochromeImage": "./assets/images/sail.png"
+        "backgroundColor": "#121212"
       },
       "predictiveBackGestureEnabled": true
     },
     "web": {
-      "output": "static"
+      "output": "static",
+      "favicon": "./assets/images/sail.png"
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/sail.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#121212",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ],
       "expo-secure-store",
       "expo-font",
       "expo-image",
       "expo-web-browser"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "reactCompiler": true
     },
     "extra": {
       "router": {},
