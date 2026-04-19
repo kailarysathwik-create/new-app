@@ -73,7 +73,7 @@ export default function ChatListScreen() {
         {/* Header */}
         <View style={styles.topBar}>
           <Image 
-              source={require('../../../assets/images/chat-logo.png')} 
+              source={require('../../../assets/images/chatlogo.png')} 
               style={styles.chatLogo} 
               resizeMode="contain"
           />

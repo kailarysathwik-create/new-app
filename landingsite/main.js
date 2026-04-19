@@ -36,61 +36,48 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Showcase Scroll Logic
+    // Showcase Horizontal Scroll Logic
     const showcase = document.querySelector('.showcase');
     const screenStrip = document.getElementById('screenStrip');
+    const featuresScroll = document.querySelector('.features-scroll');
     const featureBlocks = document.querySelectorAll('.feature-block');
     const phoneScreen = document.querySelector('.phone-screen');
 
-    if (showcase && screenStrip && phoneScreen) {
+    if (showcase && screenStrip && phoneScreen && featuresScroll) {
+        const stripImages = screenStrip.querySelectorAll('.screen-img');
+        
         window.addEventListener('scroll', () => {
-            const windowHeight = window.innerHeight;
-            const viewportCenter = windowHeight / 2;
+            const showcaseRect = showcase.getBoundingClientRect();
+            // Total scroll track is 500vh, minus the viewport we are currently seeing
+            const scrollDistance = showcaseRect.height - window.innerHeight;
+            
+            // Progress from top of showcase to the bottom of its scrollable area
+            let progress = -showcaseRect.top / scrollDistance;
+            progress = Math.max(0, Math.min(1, progress));
 
-            // Find the block that is most "centered"
-            let closestBlockIdx = 0;
-            let minDistance = Infinity;
-
-            featureBlocks.forEach((block, idx) => {
-                const rect = block.getBoundingClientRect();
-                const blockCenter = rect.top + (rect.height / 2);
-                const distance = Math.abs(blockCenter - viewportCenter);
-
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestBlockIdx = idx;
-                }
-            });
+            const totalBlocks = featureBlocks.length;
+            const floatIndex = progress * (totalBlocks - 1);
+            const activeIndex = Math.round(floatIndex);
 
             // Update active states
             featureBlocks.forEach((block, idx) => {
-                if (idx === closestBlockIdx) {
+                if (idx === activeIndex) {
                     block.classList.add('active');
                 } else {
                     block.classList.remove('active');
                 }
             });
 
-            // Calculate precise translation
-            // Each image takes up exactly imgHeight in the strip
-            const stripImages = screenStrip.querySelectorAll('.screen-img');
-            if (stripImages.length > 0) {
-                const imgHeight = stripImages[0].offsetHeight;
-                
-                // We want the current active image to be at the top of the strip (0px offset relative to screen)
-                // BUT we also want a smooth transition as we scroll between blocks
-                
-                // Find transition progress between current block and next/prev
-                const activeBlock = featureBlocks[closestBlockIdx];
-                const activeRect = activeBlock.getBoundingClientRect();
-                const activeCenter = activeRect.top + (activeRect.height / 2);
-                
-                // Normalised offset from center (-0.5 to 0.5)
-                let blockProgress = (viewportCenter - activeCenter) / activeRect.height;
-                blockProgress = Math.max(-0.5, Math.min(0.5, blockProgress));
+            // 1. Scroll the text track horizontally
+            // The text track translates left by enough to view all slides
+            const textMaxScroll = featuresScroll.scrollWidth - window.innerWidth;
+            featuresScroll.style.transform = `translateX(${-progress * textMaxScroll}px)`;
 
-                const targetY = -(closestBlockIdx + blockProgress) * imgHeight;
-                screenStrip.style.transform = `translateY(${targetY}px)`;
+            // 2. Scroll the phone images horizontally
+            if (stripImages.length > 0) {
+                const imgWidth = stripImages[0].offsetWidth;
+                const targetX = floatIndex * imgWidth;
+                screenStrip.style.transform = `translateX(${-targetX}px)`;
             }
         });
     }

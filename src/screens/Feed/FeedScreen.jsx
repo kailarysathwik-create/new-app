@@ -418,7 +418,7 @@ export default function FeedScreen() {
 
               <NeoButton onPress={() => router.push('/radar')} style={styles.radarCard}>
                 <Image
-                  source={require('../../../assets/images/radar-logo.png')}
+                  source={require('../../../assets/images/radarlogo.png')}
                   style={styles.radarLogo}
                   resizeMode="contain"
                 />

@@ -21,7 +21,7 @@
 
 html {
     scroll-behavior: smooth;
-    overflow-x: hidden;
+    overflow-x: clip; /* Fix for position: sticky */
 }
 
 body {
@@ -29,7 +29,7 @@ body {
     color: var(--text-primary);
     background-color: var(--bg-primary);
     line-height: 1.4;
-    overflow-x: hidden;
+    overflow-x: clip; /* Fix for position: sticky */
 }
 
 /* Base Mobile Styles */
@@ -202,25 +202,26 @@ nav {
 
 /* Showcase Section - The Single Phone */
 .showcase {
-    padding: 40px 24px;
+    height: 500vh; /* Scroll track length */
     background: rgba(0, 0, 0, 0.02);
-    border-top: 3px solid var(--black);
+    position: relative;
 }
 
 .showcase-inner {
-    display: flex;
-    flex-direction: column;
-    gap: 40px;
-    min-height: 400vh; /* More scroll runway for smoother mapping */
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
 }
 
 .sticky-phone-wrap {
-    display: flex;
-    justify-content: center;
-    position: sticky;
-    top: 80px; /* Aligned with navbar */
+    position: absolute;
+    top: 40%; /* Offset up slightly on mobile so text fits below */
+    left: 50%;
+    transform: translate(-50%, -50%);
     z-index: 10;
-    margin-bottom: 20px;
+    margin: 0;
     height: auto;
 }
 
@@ -247,44 +248,64 @@ nav {
 
 .screenshot-strip {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     width: 100%;
+    height: 100%;
     transition: transform 0.2s cubic-bezier(0.33, 1, 0.68, 1);
 }
 
 .screen-img {
+    flex: 0 0 100%;
     width: 100%;
-    height: 552px; /* Adjusted for smaller phone */
+    height: 100%;
     object-fit: cover;
-    border-bottom: 2px solid var(--black);
+    border-right: 2px solid var(--black);
 }
 
 .features-scroll {
+    position: absolute;
+    top: 0;
+    left: 0;
     display: flex;
-    flex-direction: column;
-    gap: 80px;
-    padding-bottom: 60px;
+    flex-direction: row;
+    height: 100vh;
+    width: max-content;
+    z-index: 20;
+    gap: 0;
+    padding: 0;
+    will-change: transform;
 }
 
 .feature-block {
-    opacity: 0.15;
-    transition: all 0.5s ease;
-    text-align: center;
-    min-height: 70vh; /* Predictable block size for scroll rhythm */
+    width: 100vw;
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-end; /* Mobile: place at bottom */
+    align-items: center;
+    padding-bottom: 2vh;
+    opacity: 0.15;
+    transition: opacity 0.5s ease;
+    text-align: center;
 }
 
 .feature-block.active {
     opacity: 1;
-    transform: scale(1.05); /* Subtle scale to highlight current text */
 }
 
-.feature-block h2 {
-    font-size: 2rem;
+.feature-content {
+    max-width: 90%;
+    padding: 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(15px);
+    border: 3px solid var(--black);
+    box-shadow: var(--brutal-shadow-small);
+}
+
+.feature-content h2 {
+    font-size: 1.8rem;
     font-weight: 900;
-    margin: 8px 0 15px;
+    margin: 8px 0 10px;
 }
 
 /* Features Bento */
@@ -451,14 +472,31 @@ nav {
     .hero-btns { flex-direction: row; width: auto; }
     .hero-visual { flex: 1; display: block; } /* Placeholder if needed */
 
-    .showcase { padding: 0 10%; }
-    .showcase-inner { flex-direction: row; gap: 100px; min-height: 300vh; }
-    .features-scroll { flex: 1; text-align: left; }
-    .feature-block { min-height: 70vh; text-align: left; }
-    .feature-block h2 { font-size: 3.5rem; }
-    .sticky-phone-wrap { flex: 1; height: 100vh; top: 0; align-items: center; }
+    .showcase { padding: 0; }
+    .showcase-inner { flex-direction: row; gap: 0; min-height: auto; }
+    .features-scroll { flex: unset; }
+    
+    .sticky-phone-wrap { 
+        top: 50%; /* Dead center on desktop */
+    }
+    
+    .feature-block { 
+        justify-content: center; 
+        align-items: flex-start;
+        padding-left: 10vw;
+        height: 100vh; /* ensure it stays 100vh */
+        min-height: unset;
+    }
+    
+    .feature-content {
+        max-width: 400px;
+        text-align: left;
+        padding: 30px;
+    }
+
+    .feature-content h2 { font-size: 2.5rem; }
+    
     .glass-phone { width: 320px; height: 640px; }
-    .screen-img { height: 612px; }
 
     .bento-grid {
         display: grid;

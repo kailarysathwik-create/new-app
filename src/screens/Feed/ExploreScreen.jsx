@@ -127,7 +127,7 @@ export default function ExploreScreen() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Image 
-              source={require('../../../assets/images/explore-logo.png')} 
+              source={require('../../../assets/images/explorelogo.png')} 
               style={styles.exploreLogo} 
               resizeMode="contain"
           />

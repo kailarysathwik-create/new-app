@@ -50,7 +50,7 @@ export default function LoginScreen() {
               style={styles.logoFrame}
             >
                 <Image 
-                    source={require('../../../assets/images/SAILY-logo.png')} 
+                    source={require('../../../assets/images/sailylogo.png')} 
                     style={styles.logoImage} 
                     resizeMode="contain"
                 />

@@ -62,7 +62,7 @@ function HarbourStatus({ fileCount }) {
     <View style={styles.harbourCard}>
       <View style={styles.harbourTop}>
         <Image
-          source={require('../../../assets/images/vault-logo.png')}
+          source={require('../../../assets/images/vaultlogo.png')}
           style={{ width: 16, height: 16 }}
           resizeMode="contain"
         />
@@ -217,7 +217,7 @@ export default function VaultScreen() {
           transition={{ type: 'spring' }}
         >
           <Image
-            source={require('../../../assets/images/vault-logo.png')}
+            source={require('../../../assets/images/vaultlogo.png')}
             style={{ width: 64, height: 64 }}
             resizeMode="contain"
           />
@@ -238,7 +238,7 @@ export default function VaultScreen() {
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <Image
-              source={require('../../../assets/images/vault-logo.png')}
+              source={require('../../../assets/images/vaultlogo.png')}
               style={{ width: 28, height: 28 }}
               resizeMode="contain"
             />
@@ -291,7 +291,7 @@ export default function VaultScreen() {
               style={styles.emptyCard}
             >
               <Image
-                source={require('../../../assets/images/vault-logo.png')}
+                source={require('../../../assets/images/vaultlogo.png')}
                 style={{ width: 48, height: 48 }}
                 resizeMode="contain"
               />

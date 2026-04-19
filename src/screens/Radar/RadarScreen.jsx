@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { BlurView } from 'expo-blur';
-import { Radar as RadarIcon, Check, X, Anchor, UserPlus, ChevronRight } from 'lucide-react-native';
-import { colors, spacing, radius, typography, shadows, borders } from '../../theme/tokens';
+import * as Haptics from 'expo-haptics';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { Anchor, Check, ChevronRight, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../store/authStore';
-import { useFocusEffect, useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { borders, colors, radius, shadows, spacing, typography } from '../../theme/tokens';
 
 export default function RadarScreen() {
   const { user } = useAuthStore();
@@ -59,7 +59,7 @@ export default function RadarScreen() {
 
   const handleAction = async (signal, action) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
+
     if (action === 'accept') {
       // 1. Update Follow Status
       await supabase
@@ -67,10 +67,10 @@ export default function RadarScreen() {
         .update({ status: 'accepted' })
         .eq('follower_id', signal.actor_id)
         .eq('following_id', user.id);
-      
+
       // 2. Mark Notification as Read
       await supabase.from('notifications').update({ read: true }).eq('id', signal.id);
-      
+
       // 3. Optional: Ask user if they want to follow back (Prompt logic here)
       // For now, just refresh
       fetchSignals();
@@ -86,9 +86,9 @@ export default function RadarScreen() {
     <View style={styles.signalCard}>
       <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
       <View style={styles.signalInner}>
-        <Image 
-            source={item.actor.avatar_url ? { uri: item.actor.avatar_url } : require('../../../assets/images/defaultavatar.png')} 
-            style={styles.avatar} 
+        <Image
+          source={item.actor.avatar_url ? { uri: item.actor.avatar_url } : require('../../../assets/images/defaultavatar.png')}
+          style={styles.avatar}
         />
         <View style={styles.signalContent}>
           <Text style={styles.signalTitle}>
@@ -100,10 +100,10 @@ export default function RadarScreen() {
         {item.type === 'follow_request' && !item.read ? (
           <View style={styles.actions}>
             <TouchableOpacity onPress={() => handleAction(item, 'reject')} style={[styles.actionBtn, styles.rejectBtn]}>
-                <X color={colors.white} size={18} />
+              <X color={colors.white} size={18} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleAction(item, 'accept')} style={[styles.actionBtn, styles.acceptBtn]}>
-                <Check color={colors.black} size={18} strokeWidth={3} />
+              <Check color={colors.black} size={18} strokeWidth={3} />
             </TouchableOpacity>
           </View>
         ) : (
@@ -117,17 +117,17 @@ export default function RadarScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <ChevronRight color={colors.white} size={24} style={{ transform: [{ rotate: '180deg' }] }} />
+          <ChevronRight color={colors.white} size={24} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>RADAR CENTER</Text>
         <View style={{ width: 40 }} />
       </View>
 
       <View style={styles.scanSection}>
-        <Image 
-            source={require('../../../assets/images/radar-logo.png')} 
-            style={styles.radarLogo} 
-            resizeMode="contain"
+        <Image
+          source={require('../../../assets/images/radarlogo.png')}
+          style={styles.radarLogo}
+          resizeMode="contain"
         />
         <Text style={styles.scanText}>SCANNING FOR SIGNALS...</Text>
       </View>
@@ -154,33 +154,33 @@ export default function RadarScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  header: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingHorizontal: spacing.lg, 
-    paddingTop: spacing.xxl, 
-    paddingBottom: spacing.md, 
-    borderBottomWidth: borders.thin, 
-    borderColor: colors.glassBorder 
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    borderBottomWidth: borders.thin,
+    borderColor: colors.glassBorder
   },
   headerTitle: { fontFamily: typography.family.black, color: colors.white, fontSize: 18, letterSpacing: 2 },
   backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  
+
   scanSection: { alignItems: 'center', paddingVertical: spacing.xl },
-  radarLogo: { 
-    width: 60, 
-    height: 60, 
+  radarLogo: {
+    width: 60,
+    height: 60,
     marginBottom: 12,
   },
   scanText: { fontFamily: typography.family.black, color: colors.accent, fontSize: 10, letterSpacing: 1 },
 
   list: { padding: spacing.lg },
-  signalCard: { 
-    marginBottom: spacing.md, 
-    borderRadius: radius.md, 
-    overflow: 'hidden', 
-    borderWidth: 1, 
+  signalCard: {
+    marginBottom: spacing.md,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    borderWidth: 1,
     borderColor: colors.glassBorder,
     backgroundColor: 'rgba(255,255,255,0.03)',
     ...shadows.brutalSmall
@@ -193,12 +193,12 @@ const styles = StyleSheet.create({
   signalTime: { fontFamily: typography.family.medium, color: colors.textMuted, fontSize: 10, marginTop: 4 },
 
   actions: { flexDirection: 'row' },
-  actionBtn: { 
-    width: 36, 
-    height: 36, 
-    borderRadius: 18, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
+  actionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginLeft: spacing.sm,
     borderWidth: 2,
     borderColor: colors.black,
@@ -208,12 +208,12 @@ const styles = StyleSheet.create({
   rejectBtn: { backgroundColor: 'rgba(255,50,50,0.2)' },
 
   emptyState: { alignItems: 'center', marginTop: 100 },
-  emptyText: { 
-    fontFamily: typography.family.medium, 
-    color: colors.textMuted, 
-    fontSize: 13, 
-    textAlign: 'center', 
-    marginTop: 20, 
-    paddingHorizontal: 40 
+  emptyText: {
+    fontFamily: typography.family.medium,
+    color: colors.textMuted,
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 20,
+    paddingHorizontal: 40
   },
 });

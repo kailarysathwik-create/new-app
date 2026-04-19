@@ -41,11 +41,11 @@ function TabIcon({ image, label, focused }: { image: number; label: string; focu
 }
 
 export default function TabsLayout() {
-  const feedIcon = require('../../assets/images/SAILY-logo.png');
-  const exploreIcon = require('../../assets/images/explore-logo.png');
-  const chatIcon = require('../../assets/images/chat-logo.png');
-  const vaultIcon = require('../../assets/images/vault-logo.png');
-  const profileIcon = require('../../assets/images/profile-logo.png');
+  const feedIcon = require('../../assets/images/sailylogo.png');
+  const exploreIcon = require('../../assets/images/explorelogo.png');
+  const chatIcon = require('../../assets/images/chatlogo.png');
+  const vaultIcon = require('../../assets/images/vaultlogo.png');
+  const profileIcon = require('../../assets/images/profilelogo.png');
 
   return (
     <Tabs
