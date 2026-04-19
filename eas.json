@@ -1,4 +1,7 @@
 {
+  "cli": {
+    "appVersionSource": "local"
+  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -7,6 +10,9 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "NODE_ENV": "production"
       }
     },
     "production": {}
