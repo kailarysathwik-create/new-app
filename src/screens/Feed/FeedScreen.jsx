@@ -140,7 +140,7 @@ function AnchorCard({ post, index }) {
               source={
                 post.profiles?.avatar_url
                   ? { uri: post.profiles.avatar_url }
-                  : require('../../../assets/images/defaultavatar.png')
+                  : { uri: 'https://ui-avatars.com/api/?name=User&background=121212&color=fff' }
               }
               style={styles.postAvatar}
             />

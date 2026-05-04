@@ -16,7 +16,8 @@
         "foregroundImage": "./assets/images/sail.png",
         "backgroundColor": "#121212"
       },
-      "predictiveBackGestureEnabled": true
+      "predictiveBackGestureEnabled": true,
+      "ndkVersion": "26.1.10909125"
     },
     "web": {
       "output": "static",
@@ -36,6 +37,7 @@
           }
         }
       ],
+      "./plugins/withAndroidSigning",
       "expo-secure-store",
       "expo-font",
       "expo-image",

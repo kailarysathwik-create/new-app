@@ -138,7 +138,7 @@ export default function BreezeViewer({ visible, story, onClose }) {
                 source={
                   story.profiles?.avatar_url
                     ? { uri: story.profiles.avatar_url }
-                    : require('../../../assets/images/defaultavatar.png')
+                    : { uri: 'https://ui-avatars.com/api/?name=User&background=121212&color=fff' }
                 }
                 style={styles.avatar}
               />

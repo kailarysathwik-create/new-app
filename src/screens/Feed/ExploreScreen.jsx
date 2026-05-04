@@ -106,7 +106,7 @@ export default function ExploreScreen() {
       >
         <TouchableOpacity style={styles.userCardInner} onPress={() => router.push(`/user/${user.id}`)}>
           <Image 
-            source={user.avatar_url ? { uri: user.avatar_url } : require('../../../assets/images/defaultavatar.png')} 
+            source={user.avatar_url ? { uri: user.avatar_url } : { uri: 'https://ui-avatars.com/api/?name=User&background=121212&color=fff' }} 
             style={styles.userAvatar} 
           />
           <View style={styles.userInfo}>

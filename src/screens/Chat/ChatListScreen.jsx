@@ -53,13 +53,28 @@ export default function ChatListScreen() {
     if (!profile) return;
     setLoading(true);
     const { data } = await supabase.from('conversation_participants').select('conversation_id, conversations(id, is_hidden)').eq('user_id', profile.id);
+    
+    let convos = [];
     if (data) {
-      const convos = await Promise.all(data.map(async (item) => {
+      convos = await Promise.all(data.map(async (item) => {
         const { data: p } = await supabase.from('conversation_participants').select('profiles(id, username, public_key, avatar_url)').eq('conversation_id', item.conversation_id).neq('user_id', profile.id).single();
         return { ...item.conversations, otherUser: p?.profiles };
       }));
-      setConversations(convos);
     }
+
+    // Inject Saily Official if not present
+    const sailyOfficial = {
+      id: 'saily-official',
+      otherUser: {
+        id: 'saily-bot',
+        username: 'Saily Official',
+        public_key: null,
+        avatar_url: null
+      },
+      is_system: true
+    };
+    
+    setConversations([sailyOfficial, ...convos]);
     setLoading(false);
   }, [profile, setConversations]);
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Linking } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Send, Info, Plus } from 'lucide-react-native';
+import { ArrowLeft, Send, Info, Plus, Mic } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { MotiView, AnimatePresence } from 'moti';
 import { colors, spacing, radius, typography, shadows, borders } from '../../theme/tokens';
@@ -9,6 +9,10 @@ import { supabase } from '../../lib/supabase';
 import { decryptMessage, encryptMessage } from '../../crypto/encryption';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
+import { useVoiceStore } from '../../store/voiceStore';
+import SignalOverlay from '../../components/Chat/SignalOverlay';
+import NeoButton from '../../components/ui/NeoButton';
+import { PanResponder, Alert, Modal } from 'react-native';
 
 // ─── GLOW TRAIL COMPONENT ──────────────────────────────────────────────────
 function GlowTrail({ isVisible }) {
@@ -70,6 +74,56 @@ export default function DirectMessageScreen() {
   const [isMutual, setIsMutual] = useState(true); // Default true until check
   const [checkingMutual, setCheckingMutual] = useState(true);
   const flatListRef = useRef(null);
+  const gestureTimer = useRef(null);
+
+  // Voice Store
+  const { isSignalActive, activeVoiceId, startSignal, endSignal } = useVoiceStore();
+  const [showConflictModal, setShowConflictModal] = useState(false);
+
+  const handleGestureStart = () => {
+    if (gestureTimer.current) clearTimeout(gestureTimer.current);
+    
+    gestureTimer.current = setTimeout(() => {
+      if (isSignalActive && activeVoiceId !== conversationId) {
+        setShowConflictModal(true);
+      } else {
+        startSignal(conversationId);
+      }
+    }, 5000);
+  };
+
+  const handleGestureEnd = () => {
+    if (gestureTimer.current) {
+        clearTimeout(gestureTimer.current);
+        gestureTimer.current = null;
+    }
+    // Only end signal if it was this specific one
+    if (activeVoiceId === conversationId) {
+        endSignal();
+    }
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 3,
+      onMoveShouldSetPanResponder: (evt) => evt.nativeEvent.touches.length === 3,
+      onPanResponderGrant: (evt) => {
+        const touches = evt.nativeEvent.touches;
+        if (touches.length === 3) {
+          const x1 = touches[0].pageX;
+          const x2 = touches[1].pageX;
+          const x3 = touches[2].pageX;
+          
+          const isVerticallyAligned = Math.abs(x1 - x2) < 40 && Math.abs(x2 - x3) < 40;
+          if (isVerticallyAligned) {
+            handleGestureStart();
+          }
+        }
+      },
+      onPanResponderRelease: handleGestureEnd,
+      onPanResponderTerminate: handleGestureEnd,
+    })
+  ).current;
 
   useEffect(() => {
     if (!conversationId) return;
@@ -97,19 +151,38 @@ export default function DirectMessageScreen() {
   }, [recipientProfile]);
 
   const fetchMessages = useCallback(async () => {
+    if (conversationId === 'saily-official') {
+      setMessages([
+        {
+          id: 'saily-welcome',
+          sender_id: 'saily-bot',
+          encrypted_content: 'Welcome to Saily!',
+          created_at: new Date().toISOString()
+        }
+      ]);
+      setDecryptedMessages({
+        'saily-welcome': 'Welcome to Saily Harbour! ⚓⚓\n\nI am your automated guide. Here you can test your secure connection.\n\nPRO TIP: Use a 3-finger vertical tap to activate the Signal (Voice UI).'
+      });
+      return;
+    }
     const { data } = await supabase.from('messages').select('*').eq('conversation_id', conversationId).order('created_at', { ascending: true });
     setMessages(data ?? []);
     if (data) data.forEach(autoDecrypt);
-  }, [conversationId, autoDecrypt]);
+  }, [conversationId, autoDecrypt, setMessages]);
 
   const checkIfMutual = useCallback(async () => {
+    if (conversationId === 'saily-official') {
+      setIsMutual(true);
+      setCheckingMutual(false);
+      return;
+    }
     if (!recipientProfile?.id) return;
     setCheckingMutual(true);
     const { data: f1 } = await supabase.from('follows').select('status').eq('follower_id', profile.id).eq('following_id', recipientProfile.id).eq('status', 'accepted').single();
     const { data: f2 } = await supabase.from('follows').select('status').eq('follower_id', recipientProfile.id).eq('following_id', profile.id).eq('status', 'accepted').single();
     setIsMutual(!!f1 && !!f2);
     setCheckingMutual(false);
-  }, [profile.id, recipientProfile?.id]);
+  }, [profile.id, recipientProfile?.id, conversationId]);
 
   useEffect(() => { 
     fetchMessages(); 
@@ -131,7 +204,37 @@ export default function DirectMessageScreen() {
   };
 
   return (
-    <View style={styles.container} onTouchStart={() => setLastInteractedMsgId(null)}>
+    <View 
+      style={styles.container} 
+      onTouchStart={() => setLastInteractedMsgId(null)}
+      {...panResponder.panHandlers}
+    >
+      <SignalOverlay active={isSignalActive && activeVoiceId === conversationId} />
+
+      {/* ─── CONFLICT MODAL ────────────────────────────────────────────────── */}
+      <Modal visible={showConflictModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.conflictCard}>
+            <Text style={styles.conflictTitle}>SIGNAL BUSY</Text>
+            <Text style={styles.conflictText}>
+              You are already in an active voice chat with another user.
+            </Text>
+            <NeoButton 
+                style={styles.conflictBtn} 
+                onPress={() => {
+                   setShowConflictModal(false);
+                   router.push(`/chat/${activeVoiceId}`);
+                }}
+            >
+                <Text style={styles.conflictBtnText}>RETURN TO ACTIVE CHAT</Text>
+            </NeoButton>
+            <TouchableOpacity onPress={() => setShowConflictModal(false)} style={styles.dismissBtn}>
+                <Text style={styles.dismissText}>DISMISS</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* Brutalist Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -356,6 +459,53 @@ const styles = StyleSheet.create({
   lockSub: { fontFamily: typography.family.bold, color: colors.black, fontSize: 10, textAlign: 'center', marginTop: 8, opacity: 0.7 },
   profileBtn: { marginTop: 16, backgroundColor: colors.black, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 4 },
   profileBtnText: { fontFamily: typography.family.black, color: colors.white, fontSize: 10 },
+  
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    padding: spacing.xl,
+  },
+  conflictCard: {
+    backgroundColor: colors.accent,
+    borderWidth: borders.thick,
+    borderColor: colors.black,
+    padding: spacing.xl,
+    ...shadows.brutal,
+    alignItems: 'center',
+  },
+  conflictTitle: {
+    fontFamily: typography.family.black,
+    fontSize: 24,
+    color: colors.black,
+    marginBottom: 8,
+  },
+  conflictText: {
+    fontFamily: typography.family.bold,
+    fontSize: 14,
+    color: colors.black,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  conflictBtn: {
+    backgroundColor: colors.white,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    width: '100%',
+    alignItems: 'center',
+  },
+  conflictBtnText: {
+    fontFamily: typography.family.black,
+    fontSize: 12,
+  },
+  dismissBtn: {
+    marginTop: 16,
+  },
+  dismissText: {
+    fontFamily: typography.family.black,
+    fontSize: 10,
+    textDecorationLine: 'underline',
+  },
 });
 
 

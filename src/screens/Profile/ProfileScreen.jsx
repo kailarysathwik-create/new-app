@@ -20,6 +20,7 @@ import { colors, spacing, typography, shadows, borders } from '../../theme/token
 import { useAuthStore } from '../../store/authStore';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
+import { uploadToHarbour } from '../../lib/cloudNode';
 import GridBackground from '../../components/ui/GridBackground';
 import NeoButton from '../../components/ui/NeoButton';
 
@@ -64,18 +65,17 @@ export default function ProfileScreen() {
       let avatarUrl = localUri;
 
       try {
-        const response = await fetch(localUri);
-        const blob = await response.blob();
-        const path = `avatars/${user.id}-${Date.now()}.jpg`;
-        const uploadRes = await supabase.storage
-          .from('avatars')
-          .upload(path, blob, { contentType: 'image/jpeg', upsert: true });
+        const { fileId, publicUrl, error: harbourError } = await uploadToHarbour(localUri, `avatar_${user.id}.jpg`, user.id, {
+          mimeType: 'image/jpeg'
+        });
 
-        if (!uploadRes.error) {
-          const { data } = supabase.storage.from('avatars').getPublicUrl(path);
-          if (data?.publicUrl) avatarUrl = data.publicUrl;
+        if (!harbourError) {
+          avatarUrl = publicUrl || `cloud://${fileId}`;
+        } else {
+          throw harbourError;
         }
       } catch (_storageError) {
+        console.error('[Profile] Harbour upload failed, using local URI:', _storageError);
         // Keep local URI fallback if storage bucket is unavailable.
       }
 
@@ -238,7 +238,7 @@ export default function ProfileScreen() {
                 source={
                   profile.avatar_url
                     ? { uri: profile.avatar_url }
-                    : require('../../../assets/images/defaultavatar.png')
+                    : { uri: 'https://ui-avatars.com/api/?name=User&background=121212&color=fff' }
                 }
                 style={styles.avatar}
               />

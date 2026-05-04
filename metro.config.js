@@ -13,11 +13,21 @@ config.resolver.blockList = exclusionList([
   /android[\/\\]app[\/\\]\.cxx[\/\\].*/,
 ]);
 
-// Ensure Metro can always find react-native-worklets (peer dep of reanimated)
+// Ensure Metro can always find react-native-worklets and expo modules
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, 'node_modules'),
+];
+
 config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   'react-native-worklets': path.resolve(__dirname, 'node_modules/react-native-worklets'),
+  'expo-modules-core': path.resolve(__dirname, 'node_modules/expo-modules-core'),
 };
+
+config.watchFolders = [
+  path.resolve(__dirname),
+  path.resolve(__dirname, 'node_modules'),
+];
 
 const defaultResolveRequest = config.resolver.resolveRequest;
 
